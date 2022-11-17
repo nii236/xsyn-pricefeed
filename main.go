@@ -9,9 +9,10 @@ import (
 	"xsyn-pricefeed/ethusd"
 	"xsyn-pricefeed/supseth"
 
+	chiprometheus "xsyn-pricefeed/middleware"
+
 	_ "github.com/prometheus/client_golang/prometheus"
 
-	chiprometheus "github.com/edjumacator/chi-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/rs/zerolog"
