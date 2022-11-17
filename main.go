@@ -9,6 +9,11 @@ import (
 	"xsyn-pricefeed/ethusd"
 	"xsyn-pricefeed/supseth"
 
+	_ "github.com/prometheus/client_golang/prometheus"
+
+	chiprometheus "github.com/edjumacator/chi-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
 	cache "github.com/victorspringer/http-cache"
@@ -88,6 +93,10 @@ func Serve(rpcURL string, port int) error {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
+
+	r.Handle("/metrics", promhttp.Handler())
+	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
 	log.Info().Int("port", port).Msg("Running server")
 	return http.ListenAndServe(":"+fmt.Sprintf("%d", port), r)
