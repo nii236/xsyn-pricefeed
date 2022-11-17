@@ -14,3 +14,9 @@ cd supseth
 solc --abi supseth.sol -o .
 abigen --abi=IUniswapV3PoolState.abi.abi --pkg=supseth --out=supseth.go
 ```
+
+To run:
+
+```
+go run main.go --rpc_url {{RPC_URL}}
+```
