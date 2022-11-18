@@ -59,8 +59,12 @@ func Serve(rpcURL string, port int) error {
 		return fmt.Errorf("dial eth node: %w", err)
 	}
 	ethusdAddr := common.HexToAddress("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
+	bnbethAddr := common.HexToAddress("0x14e613ac84a31f709eadbdf89c6cc390fdc9540a")
 	supethAddr := common.HexToAddress("0xa1e5dc01359c2920c096f0091fc7f0bf69812ca7")
-
+	bnbethContract, err := ethusd.NewEthusd(bnbethAddr, client)
+	if err != nil {
+		return fmt.Errorf("create ethusd contract: %w", err)
+	}
 	ethusdContract, err := ethusd.NewEthusd(ethusdAddr, client)
 	if err != nil {
 		return fmt.Errorf("create ethusd contract: %w", err)
@@ -87,7 +91,7 @@ func Serve(rpcURL string, port int) error {
 		return fmt.Errorf("memcached client: %w", err)
 	}
 
-	ethC := &EthClient{ethusdContract, supsethContract}
+	ethC := &EthClient{ethusdContract, supsethContract, bnbethContract}
 	c := &Controller{ethC}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -99,6 +103,9 @@ func Serve(rpcURL string, port int) error {
 	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
+	r.Get("/api/eth_price", cacheClient.Middleware(http.HandlerFunc(c.Eth)).ServeHTTP)
+	r.Get("/api/bnb_price", cacheClient.Middleware(http.HandlerFunc(c.Bnb)).ServeHTTP)
+	r.Get("/api/sups_price", cacheClient.Middleware(http.HandlerFunc(c.Sups)).ServeHTTP)
 	log.Info().Int("port", port).Msg("Running server")
 	return http.ListenAndServe(":"+fmt.Sprintf("%d", port), r)
 }
@@ -106,9 +113,60 @@ func Serve(rpcURL string, port int) error {
 type Controller struct {
 	*EthClient
 }
+
+type SingleResponse struct {
+	Time int64  `json:"time"`
+	Usd  string `json:"usd"`
+}
+
+func (c *Controller) Eth(w http.ResponseWriter, r *http.Request) {
+	price, err := c.ETHUSD()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	time := time.Now().Unix()
+	resp := &SingleResponse{time, price.Div(decimal.NewFromInt(100)).String()}
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (c *Controller) Bnb(w http.ResponseWriter, r *http.Request) {
+	price, err := c.BNBUSD()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	time := time.Now().Unix()
+	resp := &SingleResponse{time, price.Div(decimal.NewFromInt(100)).String()}
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+func (c *Controller) Sups(w http.ResponseWriter, r *http.Request) {
+	price, err := c.SUPSUSD()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	time := time.Now().Unix()
+	resp := &SingleResponse{time, price.Div(decimal.NewFromInt(100)).String()}
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 type PriceResponse struct {
 	SUPSUSD decimal.Decimal `json:"sups_usd_cents"`
 	ETHUSD  decimal.Decimal `json:"eth_usd_cents"`
+	BNBUSD  decimal.Decimal `json:"bnb_usd_cents"`
 }
 
 func (c *Controller) PricesHandler(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +182,13 @@ func (c *Controller) PricesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	result := &PriceResponse{supsusd, ethusd}
+	bnbusd, err := c.BNBUSD()
+	if err != nil {
+		log.Err(err).Msg("get ethusd price")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	result := &PriceResponse{supsusd, ethusd, bnbusd}
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		log.Err(err).Msg("marshal json")
@@ -134,8 +198,9 @@ func (c *Controller) PricesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type EthClient struct {
-	*ethusd.Ethusd
-	*supseth.Supseth
+	Ethusd  *ethusd.Ethusd
+	Supseth *supseth.Supseth
+	Bnbusd  *ethusd.Ethusd
 }
 
 func (c *EthClient) SUPSUSD() (decimal.Decimal, error) {
@@ -162,6 +227,14 @@ func (c *EthClient) ETHUSD() (decimal.Decimal, error) {
 	result, err := c.Ethusd.LatestRoundData(&bind.CallOpts{})
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("query ethusd: %w", err)
+	}
+	return decimal.NewFromBigInt(result.Answer, -6), nil
+}
+
+func (c *EthClient) BNBUSD() (decimal.Decimal, error) {
+	result, err := c.Bnbusd.LatestRoundData(&bind.CallOpts{})
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("query bnbusd: %w", err)
 	}
 	return decimal.NewFromBigInt(result.Answer, -6), nil
 }
