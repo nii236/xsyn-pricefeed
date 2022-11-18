@@ -3,7 +3,6 @@ module xsyn-pricefeed
 go 1.19
 
 require (
-	github.com/edjumacator/chi-prometheus v0.0.0-20181210190628-e076595e3e86
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/prometheus/client_golang v1.14.0
@@ -21,7 +20,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
-	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
