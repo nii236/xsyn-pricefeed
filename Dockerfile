@@ -15,7 +15,7 @@ COPY ./supseth ./supseth
 COPY *.go ./
 
 RUN mkdir ./dist
-RUN GOOS=linux GOARCH=linux go build -o ./dist/xsyn-pricefeed
+RUN GOOS=linux GOARCH=amd64 go build -o ./dist/xsyn-pricefeed
 
 ## Deploy
 FROM gcr.io/distroless/static-debian11
