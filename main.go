@@ -35,8 +35,8 @@ func main() {
 		Name:  "serve",
 		Usage: "serve price feed API",
 		Flags: []cli.Flag{
-			&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on"},
-			&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL"},
+			&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on", EnvVars: []string{"PORT"}},
+			&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL", EnvVars: []string{"RPC_URL"}},
 		},
 		Action: func(c *cli.Context) error {
 			rpcURL := c.String("rpc_url")
