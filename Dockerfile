@@ -19,7 +19,7 @@ RUN mkdir ./dist
 RUN GOOS=linux GOARCH=amd64 go build -o ./dist/xsyn-pricefeed
 
 ## Deploy
-FROM gcr.io/distroless/static-debian11:debug
+FROM gcr.io/distroless/base-debian11
 
 WORKDIR /
 COPY --from=build /app/dist/xsyn-pricefeed /xsyn-pricefeed
