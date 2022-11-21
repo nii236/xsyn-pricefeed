@@ -2,6 +2,7 @@
 
 ## Build
 FROM golang:1.19.3-buster AS build
+ADD https://www.google.com /time.now
 
 WORKDIR /app
 
@@ -18,7 +19,7 @@ RUN mkdir ./dist
 RUN GOOS=linux GOARCH=amd64 go build -o ./dist/xsyn-pricefeed
 
 ## Deploy
-FROM gcr.io/distroless/static-debian11
+FROM gcr.io/distroless/static-debian11:debug
 
 WORKDIR /
 COPY --from=build /app/dist/xsyn-pricefeed /xsyn-pricefeed
