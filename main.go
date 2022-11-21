@@ -35,13 +35,15 @@ func main() {
 		Name:  "serve",
 		Usage: "serve price feed API",
 		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "ttl_seconds", Value: 300, Usage: "seconds to cache the responses", EnvVars: []string{"TTL_SECONDS"}},
 			&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on", EnvVars: []string{"PORT"}},
 			&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL", EnvVars: []string{"RPC_URL"}},
 		},
 		Action: func(c *cli.Context) error {
+			ttlSeconds := c.Int("ttl_seconds")
 			rpcURL := c.String("rpc_url")
 			port := c.Int("port")
-			return Serve(rpcURL, port)
+			return Serve(rpcURL, port, ttlSeconds)
 		},
 	}
 
@@ -51,7 +53,7 @@ func main() {
 
 }
 
-func Serve(rpcURL string, port int) error {
+func Serve(rpcURL string, port int, ttlSeconds int) error {
 	log = zerolog.New(os.Stdout)
 
 	client, err := ethclient.Dial(rpcURL)
@@ -84,7 +86,7 @@ func Serve(rpcURL string, port int) error {
 
 	cacheClient, err := cache.NewClient(
 		cache.ClientWithAdapter(memcached),
-		cache.ClientWithTTL(1*time.Minute),
+		cache.ClientWithTTL(time.Duration(ttlSeconds)*time.Second),
 		cache.ClientWithRefreshKey("opn"),
 	)
 	if err != nil {
