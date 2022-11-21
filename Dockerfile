@@ -23,7 +23,6 @@ FROM gcr.io/distroless/base-debian11
 
 WORKDIR /
 COPY --from=build /app/dist/xsyn-pricefeed /xsyn-pricefeed
-EXPOSE 8080
 
 USER nonroot:nonroot
 
