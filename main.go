@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/shopspring/decimal"
 )
 
@@ -95,7 +96,16 @@ func Serve(rpcURL string, port int, ttlSeconds int) error {
 
 	ethC := &EthClient{ethusdContract, supsethContract, bnbethContract}
 	c := &Controller{ethC}
+
 	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -166,6 +176,7 @@ func (c *Controller) Sups(w http.ResponseWriter, r *http.Request) {
 }
 
 type PriceResponse struct {
+	Time    int64           `json:"time"`
 	SUPSUSD decimal.Decimal `json:"sups_usd_cents"`
 	ETHUSD  decimal.Decimal `json:"eth_usd_cents"`
 	BNBUSD  decimal.Decimal `json:"bnb_usd_cents"`
@@ -190,7 +201,7 @@ func (c *Controller) PricesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	result := &PriceResponse{supsusd, ethusd, bnbusd}
+	result := &PriceResponse{time.Now().Unix(), supsusd, ethusd, bnbusd}
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		log.Err(err).Msg("marshal json")
