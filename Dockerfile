@@ -2,7 +2,6 @@
 
 ## Build
 FROM golang:1.19.3-buster AS build
-ADD https://www.google.com /time.now
 
 WORKDIR /app
 
@@ -13,6 +12,7 @@ RUN go mod download
 COPY ./ethusd ./ethusd
 COPY ./middleware ./middleware
 COPY ./supseth ./supseth
+COPY ./erc20 ./erc20
 COPY *.go ./
 
 RUN mkdir ./dist
