@@ -118,7 +118,7 @@ func AddTransfer(transfer *Transfer) error {
 
 }
 func Transfers(symbol string, blockHeight int, sinceBlock int, chainID int) ([]*TransferAPIResponse, error) {
-	q := `SELECT * FROM transfers WHERE block >= $1 AND chain_id = $3`
+	q := `SELECT * FROM transfers WHERE block >= $1 AND chain_id = $2`
 	resultDB := []*TransferRecord{}
 	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, sinceBlock, chainID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
