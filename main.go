@@ -52,7 +52,7 @@ func main() {
 					&cli.BoolFlag{Name: "scrape_mainnet_eth", Value: true, Usage: "Scrape mainnet eth txes", EnvVars: []string{"SCRAPE_MAINNET_ETH"}},
 					&cli.BoolFlag{Name: "scrape_mainnet_sups", Value: true, Usage: "Scrape mainnet sups txes", EnvVars: []string{"SCRAPE_MAINNET_SUPS"}},
 					&cli.BoolFlag{Name: "scrape_goerli_eth", Value: true, Usage: "Scrape goerli eth txes", EnvVars: []string{"SCRAPE_GOERLI_ETH"}},
-					&cli.BoolFlag{Name: "scrape_goerli_ups", Value: true, Usage: "Scrape goerli sups txes", EnvVars: []string{"SCRAPE_GOERLI_SUPS"}},
+					&cli.BoolFlag{Name: "scrape_goerli_sups", Value: true, Usage: "Scrape goerli sups txes", EnvVars: []string{"SCRAPE_GOERLI_SUPS"}},
 				},
 				Action: func(c *cli.Context) error {
 					ttlSeconds := c.Int("ttl_seconds")
@@ -229,14 +229,14 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 	switch chain {
 	case "mainnet":
 		chainID = 1
-		blockheight, err = GetInt(KeyBlockHeightMainnet)
+		blockheight, err = GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	case "goerli":
 		chainID = 5
-		blockheight, err = GetInt(KeyBlockHeightGoerli)
+		blockheight, err = GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

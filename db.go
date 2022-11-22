@@ -60,8 +60,8 @@ func Set(key KVKey, value string) error {
 	return nil
 }
 
-func GetInt(key KVKey, defaultValue ...int) (int, error) {
-	resultStr, err := Get(key, defaultValue...)
+func GetInt(key KVKey, defaultValue int) (int, error) {
+	resultStr, err := Get(key, defaultValue)
 	if err != nil {
 		return 0, fmt.Errorf("get int: %w", err)
 	}
