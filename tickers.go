@@ -200,18 +200,7 @@ func (t *Tickers) CatchUp() error {
 }
 
 func (t *Tickers) Start() {
-	err := t.CatchUp()
-	if err != nil {
-		log.Err(err).Msg("catching up")
-	}
-
-	err = t.TickPrice()
-	if err != nil {
-		log.Err(err).Msg("tick price")
-		return
-	}
-
-	err = t.TickBlockHeightMainnet()
+	err := t.TickBlockHeightMainnet()
 	if err != nil {
 		log.Err(err).Msg("tick block height mainnet")
 		return
@@ -219,6 +208,15 @@ func (t *Tickers) Start() {
 	err = t.TickBlockHeightGoerli()
 	if err != nil {
 		log.Err(err).Msg("tick block height goerli")
+	}
+	err = t.TickPrice()
+	if err != nil {
+		log.Err(err).Msg("tick price")
+		return
+	}
+	err = t.CatchUp()
+	if err != nil {
+		log.Err(err).Msg("catching up")
 	}
 
 	log.Info().Msg("starting tickers")
