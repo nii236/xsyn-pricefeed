@@ -179,7 +179,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
 
 	r.Handle("/metrics", promhttp.Handler())
-	r.Get("/api/transfers/symbol/{symbol}/chain_id/{chain_id}", http.HandlerFunc(c.Transfers))
+	r.Get("/api/transfers/{chain}/{symbol}", http.HandlerFunc(c.Transfers))
 	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
 	r.Get("/api/eth_price", cacheClient.Middleware(http.HandlerFunc(c.Eth)).ServeHTTP)
@@ -192,13 +192,13 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 
 	symbol := chi.URLParam(r, "symbol")
-	chainIdStr := chi.URLParam(r, "chain_id")
-	chainID, err := strconv.Atoi(chainIdStr)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	chain := chi.URLParam(r, "chain")
+	if symbol != "sups" && symbol != "eth" {
+		http.Error(w, "sups or eth only", http.StatusInternalServerError)
 		return
 	}
 
+	var err error
 	sinceBlockStr := r.URL.Query().Get("since_block")
 	sinceBlock := 0
 	if sinceBlockStr != "" {
@@ -210,14 +210,17 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	blockheight := 0
-	switch chainID {
-	case 1:
+	chainID := 0
+	switch chain {
+	case "mainnet":
+		chainID = 1
 		blockheight, err = GetInt(KeyBlockHeightMainnet)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	case 5:
+	case "goerli":
+		chainID = 5
 		blockheight, err = GetInt(KeyBlockHeightGoerli)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
