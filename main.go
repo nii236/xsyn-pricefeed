@@ -172,7 +172,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int, purchaseAdd
 	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
 
 	r.Handle("/metrics", promhttp.Handler())
-	r.Get("/api/transfers", cacheClient.Middleware(http.HandlerFunc(c.Transfers)).ServeHTTP)
+	r.Get("/api/transfers", http.HandlerFunc(c.Transfers))
 	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
 	r.Get("/api/eth_price", cacheClient.Middleware(http.HandlerFunc(c.Eth)).ServeHTTP)
