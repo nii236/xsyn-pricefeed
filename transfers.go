@@ -69,7 +69,7 @@ func ScrapeETH(client *ethclient.Client, fromBlock int64, toBlock int64, whiteli
 
 				err = AddTransfer(result)
 				if err != nil {
-					log.Err(err).
+					log.Warn().Err(err).
 						Uint64("block", result.Block).
 						Int64("chain_id", result.ChainID).
 						Str("contract", result.Contract.Hex()).
@@ -128,7 +128,7 @@ func ScrapeSUPS(client *ethclient.Client, fromBlock int64, toBlock int64, chainI
 			result := &Transfer{vLog.BlockNumber, vLog.Index, chainID, tokenAddr, tokenSymbol, tokenDecimals, vLog.TxHash, from, to, amt, block.Time()}
 			err = AddTransfer(result)
 			if err != nil {
-				log.Err(err).
+				log.Warn().Err(err).
 					Uint64("block", result.Block).
 					Int64("chain_id", result.ChainID).
 					Str("contract", result.Contract.Hex()).
