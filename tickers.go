@@ -13,18 +13,20 @@ type Tickers struct {
 	*EthClient
 	Mainnet        *ethclient.Client
 	Goerli         *ethclient.Client
-	PurchaseAddr   common.Address
 	SUPSAddr       common.Address
 	GoerliSUPSAddr common.Address
 }
 
+const BaseMainnetBlock = 15879854
+const BaseGoerliBlock = 7859764
+
 func (t *Tickers) CatchUp() error {
 	for {
-		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, 15879854)
+		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
 		}
-		lastBlockMainnetSUPS, err := GetInt(KeyLastBlockMainnetSups, 15879854)
+		lastBlockMainnetSUPS, err := GetInt(KeyLastBlockMainnetSups, BaseMainnetBlock)
 		if err != nil {
 			return fmt.Errorf("get LastBlock: %w", err)
 		}
@@ -39,11 +41,11 @@ func (t *Tickers) CatchUp() error {
 	}
 
 	for {
-		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, 7859764)
+		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
 		}
-		lastBlockGoerliSUPS, err := GetInt(KeyLastBlockGoerliSups, 7859764)
+		lastBlockGoerliSUPS, err := GetInt(KeyLastBlockGoerliSups, BaseGoerliBlock)
 		if err != nil {
 			return fmt.Errorf("get LastBlock: %w", err)
 		}
@@ -125,11 +127,11 @@ func (t *Tickers) Start() {
 func (t *Tickers) TickMainnetEth() error { return ErrNotImplemented }
 func (t *Tickers) TickTestnetEth() error { return ErrNotImplemented }
 func (t *Tickers) TickGoerliSUPS() error {
-	blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, 7859764)
+	blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 	if err != nil {
 		return fmt.Errorf("start ticker: %w", err)
 	}
-	lastBlockSUPSGoerli, err := GetInt(KeyLastBlockGoerliSups, 7859764)
+	lastBlockSUPSGoerli, err := GetInt(KeyLastBlockGoerliSups, BaseGoerliBlock)
 	if err != nil {
 		return fmt.Errorf("start ticker: %w", err)
 	}
@@ -145,11 +147,11 @@ func (t *Tickers) TickGoerliSUPS() error {
 	return nil
 }
 func (t *Tickers) TickMainnetSUPS() error {
-	blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, 15879854)
+	blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
 	if err != nil {
 		return fmt.Errorf("start ticker: %w", err)
 	}
-	lastBlockSUPSMainnet, err := GetInt(KeyLastBlockMainnetSups, 15879854)
+	lastBlockSUPSMainnet, err := GetInt(KeyLastBlockMainnetSups, BaseMainnetBlock)
 	if err != nil {
 		return fmt.Errorf("start ticker: %w", err)
 	}

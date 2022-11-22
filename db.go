@@ -24,7 +24,6 @@ type KVKey string
 const KeyBlockHeightGoerli KVKey = "block_height_goerli"
 const KeyLastBlockGoerliSups KVKey = "last_block_goerli_sups"
 const KeyLastBlockGoerliEth KVKey = "last_block_goerli_eth"
-
 const KeyBlockHeightMainnet KVKey = "block_height_mainnet"
 const KeyLastBlockMainnetSups KVKey = "last_block_mainnet_sups"
 const KeyLastBlockMainnetEth KVKey = "last_block_mainnet_eth"

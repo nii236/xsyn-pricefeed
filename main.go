@@ -42,7 +42,6 @@ func main() {
 				Name:  "serve",
 				Usage: "serve price feed API",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "purchase_address", Value: "0x48e6f3e175C58181086AEC640f21815C5EbF4fC0", Usage: "to address to filter transfers", EnvVars: []string{"PURCHASE_ADDRESS"}},
 					&cli.IntFlag{Name: "ttl_seconds", Value: 300, Usage: "seconds to cache the responses", EnvVars: []string{"TTL_SECONDS"}},
 					&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on", EnvVars: []string{"PORT"}},
 					&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL", EnvVars: []string{"RPC_URL"}},
@@ -52,7 +51,6 @@ func main() {
 					&cli.StringFlag{Name: "goerli_token_addr", Value: "0xfF30d2c046AEb5FA793138265Cc586De814d0040", Usage: "Set the token addr (goerli)", EnvVars: []string{"GOERLI_TOKEN_ADDR"}},
 				},
 				Action: func(c *cli.Context) error {
-					purchaseAddr := common.HexToAddress(c.String("purchase_address"))
 					ttlSeconds := c.Int("ttl_seconds")
 					rpcURL := c.String("rpc_url")
 					goerliRpcUrl := c.String("goerli_rpc_url")
@@ -93,10 +91,10 @@ func main() {
 						return fmt.Errorf("connect db: %w", err)
 					}
 
-					t := &Tickers{ethC, ethC.Client, goerliClient, purchaseAddr, common.HexToAddress(tokenAddr), common.HexToAddress(goerliTokenAddr)}
+					t := &Tickers{ethC, ethC.Client, goerliClient, common.HexToAddress(tokenAddr), common.HexToAddress(goerliTokenAddr)}
 					go t.Start()
 
-					return Serve(ethC, rpcURL, port, ttlSeconds, purchaseAddr)
+					return Serve(ethC, rpcURL, port, ttlSeconds)
 				},
 			},
 			{
@@ -144,7 +142,7 @@ func main() {
 
 }
 
-func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int, purchaseAddr common.Address) error {
+func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 
 	memcached, err := memory.NewAdapter(
 		memory.AdapterWithAlgorithm(memory.LRU),
@@ -163,7 +161,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int, purchaseAdd
 		return fmt.Errorf("memcached client: %w", err)
 	}
 
-	c := &Controller{purchaseAddr, ethC}
+	c := &Controller{ethC}
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
@@ -242,7 +240,6 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 }
 
 type Controller struct {
-	PurchaseAddr common.Address
 	*EthClient
 }
 
