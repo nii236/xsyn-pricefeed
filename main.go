@@ -41,6 +41,7 @@ func main() {
 				Name:  "serve",
 				Usage: "serve price feed API",
 				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "purchase_address", Value: "0x48e6f3e175C58181086AEC640f21815C5EbF4fC0", Usage: "to address to filter transfers", EnvVars: []string{"PURCHASE_ADDRESS"}},
 					&cli.IntFlag{Name: "ttl_seconds", Value: 300, Usage: "seconds to cache the responses", EnvVars: []string{"TTL_SECONDS"}},
 					&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on", EnvVars: []string{"PORT"}},
 					&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL", EnvVars: []string{"RPC_URL"}},
@@ -48,6 +49,7 @@ func main() {
 					&cli.StringFlag{Name: "token_addr", Value: "0xCF39360b26a7E54f6c456E69640671Fc5e774FA2", Usage: "Set the token addr", EnvVars: []string{"TOKEN_ADDR"}},
 				},
 				Action: func(c *cli.Context) error {
+					purchaseAddr := common.HexToAddress(c.String("purchase_address"))
 					ttlSeconds := c.Int("ttl_seconds")
 					rpcURL := c.String("rpc_url")
 					port := c.Int("port")
@@ -84,7 +86,7 @@ func main() {
 					t := &Tickers{ethC, common.HexToAddress(tokenAddr)}
 					go t.Start()
 
-					return Serve(ethC, rpcURL, port, ttlSeconds)
+					return Serve(ethC, rpcURL, port, ttlSeconds, purchaseAddr)
 				},
 			},
 			{
@@ -132,7 +134,7 @@ func main() {
 
 }
 
-func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
+func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int, purchaseAddr common.Address) error {
 
 	memcached, err := memory.NewAdapter(
 		memory.AdapterWithAlgorithm(memory.LRU),
@@ -151,7 +153,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 		return fmt.Errorf("memcached client: %w", err)
 	}
 
-	c := &Controller{ethC}
+	c := &Controller{purchaseAddr, ethC}
 
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
@@ -191,7 +193,7 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := Transfers(sinceBlock)
+	result, err := Transfers(sinceBlock, c.PurchaseAddr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -205,6 +207,7 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 }
 
 type Controller struct {
+	PurchaseAddr common.Address
 	*EthClient
 }
 

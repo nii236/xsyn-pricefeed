@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
@@ -108,10 +109,10 @@ func AddTransfer(transfer *Transfer) error {
 	return nil
 
 }
-func Transfers(fromBlock int) ([]*TransferAPIResponse, error) {
-	q := `SELECT * FROM transfers WHERE block > $1`
+func Transfers(fromBlock int, toAddr common.Address) ([]*TransferAPIResponse, error) {
+	q := `SELECT * FROM transfers WHERE block > $1 AND to_address = $2`
 	resultDB := []*TransferRecord{}
-	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, fromBlock)
+	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, fromBlock, toAddr.Hex())
 	if err != nil {
 		return nil, fmt.Errorf("set block: %w", err)
 	}
