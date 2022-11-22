@@ -26,4 +26,4 @@ COPY --from=build /app/dist/xsyn-pricefeed /xsyn-pricefeed
 
 USER nonroot:nonroot
 
-CMD ["/xsyn-pricefeed"]
+ENTRYPOINT ["/xsyn-pricefeed"]
