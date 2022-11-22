@@ -200,14 +200,12 @@ func (t *Tickers) CatchUp() error {
 }
 
 func (t *Tickers) Start() {
-	go func() {
-		err := t.CatchUp()
-		if err != nil {
-			log.Err(err).Msg("catching up")
-		}
-	}()
+	err := t.CatchUp()
+	if err != nil {
+		log.Err(err).Msg("catching up")
+	}
 
-	err := t.TickPrice()
+	err = t.TickPrice()
 	if err != nil {
 		log.Err(err).Msg("tick price")
 		return
@@ -215,39 +213,12 @@ func (t *Tickers) Start() {
 
 	err = t.TickBlockHeightMainnet()
 	if err != nil {
-		log.Err(err).Msg("tick block height")
+		log.Err(err).Msg("tick block height mainnet")
 		return
 	}
 	err = t.TickBlockHeightGoerli()
 	if err != nil {
 		log.Err(err).Msg("tick block height goerli")
-	}
-
-	if t.ScrapeMainnetSUPS {
-		err = t.TickMainnetSUPS()
-		if err != nil {
-			log.Err(err).Msg("tick mainnet ETH")
-		}
-	}
-
-	if t.ScrapeGoerliSUPS {
-		err = t.TickGoerliSUPS()
-		if err != nil {
-			log.Err(err).Msg("tick goerli SUPS")
-		}
-	}
-
-	if t.ScrapeMainnetETH {
-		err = t.TickMainnetEth()
-		if err != nil {
-			log.Err(err).Msg("tick mainnet ETH")
-		}
-	}
-	if t.ScrapeGoerliETH {
-		err = t.TickGoerliETH()
-		if err != nil {
-			log.Err(err).Msg("tick goerli ETH")
-		}
 	}
 
 	log.Info().Msg("starting tickers")
