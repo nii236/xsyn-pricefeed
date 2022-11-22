@@ -200,12 +200,14 @@ func (t *Tickers) CatchUp() error {
 }
 
 func (t *Tickers) Start() {
-	err := t.CatchUp()
-	if err != nil {
-		log.Err(err).Msg("catching up")
-	}
+	go func() {
+		err := t.CatchUp()
+		if err != nil {
+			log.Err(err).Msg("catching up")
+		}
+	}()
 
-	err = t.TickPrice()
+	err := t.TickPrice()
 	if err != nil {
 		log.Err(err).Msg("tick price")
 		return
