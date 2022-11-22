@@ -179,7 +179,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
 
 	r.Handle("/metrics", promhttp.Handler())
-	r.Get("/api/transfers/symbol/{symbol}/chain_id/{chain_id}/to/{to_address}", http.HandlerFunc(c.Transfers))
+	r.Get("/api/transfers/symbol/{symbol}/chain_id/{chain_id}", http.HandlerFunc(c.Transfers))
 	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
 	r.Get("/api/eth_price", cacheClient.Middleware(http.HandlerFunc(c.Eth)).ServeHTTP)
@@ -193,7 +193,6 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 
 	symbol := chi.URLParam(r, "symbol")
 	chainIdStr := chi.URLParam(r, "chain_id")
-	toAddress := common.HexToAddress(chi.URLParam(r, "to_address"))
 	chainID, err := strconv.Atoi(chainIdStr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -226,7 +225,7 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := Transfers(symbol, blockheight, sinceBlock, toAddress, chainID)
+	result, err := Transfers(symbol, blockheight, sinceBlock, chainID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
