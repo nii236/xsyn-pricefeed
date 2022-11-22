@@ -189,8 +189,8 @@ func (t *Tickers) CatchUp() error {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for i := range messages {
-			fmt.Println(i)
+		for msg := range messages {
+			log.Info().Str("worker", msg).Msg("catchup worker finished")
 		}
 	}()
 	wg.Wait()
