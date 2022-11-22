@@ -84,7 +84,7 @@ func main() {
 						return fmt.Errorf("connect db: %w", err)
 					}
 
-					t := &Tickers{ethC, common.HexToAddress(tokenAddr)}
+					t := &Tickers{ethC, purchaseAddr, common.HexToAddress(tokenAddr)}
 					go t.Start()
 
 					return Serve(ethC, rpcURL, port, ttlSeconds, purchaseAddr)

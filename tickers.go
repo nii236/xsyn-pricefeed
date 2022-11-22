@@ -58,7 +58,7 @@ func (t *Tickers) Start() {
 	if err != nil {
 		log.Err(err).Msg("tick price")
 	}
-	err = t.TickBlock()
+	err = t.TickMainnetSUPS()
 	if err != nil {
 		log.Err(err).Msg("tick block")
 	}
@@ -109,6 +109,10 @@ func (t *Tickers) Start() {
 		}
 	}
 }
+
+func (t *Tickers) TickEth() error         { return ErrNotImplemented }
+func (t *Tickers) TickTestnetEth() error  { return ErrNotImplemented }
+func (t *Tickers) TickTestnetSUPS() error { return ErrNotImplemented }
 
 func (t *Tickers) TickMainnetSUPS() error {
 	lastBlock, err := GetInt(string(KeyLastBlock))
