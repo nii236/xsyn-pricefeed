@@ -36,6 +36,11 @@ CREATE TABLE kv (
 INSERT INTO kv (key, value) VALUES ('last_block', '0') ON CONFLICT DO NOTHING;
 INSERT INTO kv (key, value) VALUES ('block_height', '0') ON CONFLICT DO NOTHING;
 
+UPDATE kv SET value = '7859764' WHERE key = 'last_block_goerli_sups';
+UPDATE kv SET value = '7859764' WHERE key = 'last_block_goerli_eth';
+UPDATE kv SET value = '15879854' WHERE key = 'last_block_mainnet_sups';
+UPDATE kv SET value = '15879854' WHERE key = 'last_block_mainnet_eth';
+
 CREATE TABLE prices (
     id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     sups_price_cents TEXT NOT NULL,
