@@ -33,7 +33,8 @@ import (
 var log zerolog.Logger
 
 func main() {
-	log = zerolog.New(os.Stdout)
+	log = zerolog.New(os.Stdout).With().Caller().Logger()
+
 	app := &cli.App{
 
 		Commands: []*cli.Command{
