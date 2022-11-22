@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -134,9 +135,9 @@ func AddTransfer(transfer *Transfer) error {
 
 }
 func Transfers(symbol string, blockHeight int, sinceBlock int, chainID int) ([]*TransferAPIResponse, error) {
-	q := `SELECT * FROM transfers WHERE block >= $1 AND chain_id = $2 ORDER BY block DESC`
+	q := `SELECT * FROM transfers WHERE block >= $1 AND chain_id = $2 AND symbol = $3 ORDER BY block DESC`
 	resultDB := []*TransferRecord{}
-	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, sinceBlock, chainID)
+	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, sinceBlock, chainID, strings.ToUpper(symbol))
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("set block: %w", err)
 	}
