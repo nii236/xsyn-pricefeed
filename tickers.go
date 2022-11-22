@@ -10,7 +10,8 @@ import (
 
 type Tickers struct {
 	*EthClient
-	SUPSAddr common.Address
+	PurchaseAddr common.Address
+	SUPSAddr     common.Address
 }
 
 func (t *Tickers) CatchUp() error {
@@ -26,7 +27,7 @@ func (t *Tickers) CatchUp() error {
 		if lastBlock == blockHeight {
 			break
 		}
-		err = t.TickBlock()
+		err = t.TickMainnetSUPS()
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
@@ -66,21 +67,39 @@ func (t *Tickers) Start() {
 		log.Err(err).Msg("tick block height")
 	}
 
-	tb := time.NewTicker(20 * time.Second)
-	tp := time.NewTicker(60 * time.Second)
-	tbh := time.NewTicker(12 * time.Second)
+	tbs := time.NewTicker(20 * time.Second)   // Tick block mainnet SUPS
+	tbtn := time.NewTicker(20 * time.Second)  // Tick block testnet SUPS
+	tbe := time.NewTicker(20 * time.Second)   // Tick block mainnet ETH
+	tbetn := time.NewTicker(20 * time.Second) // Tick block testnet ETH
+	tp := time.NewTicker(60 * time.Second)    // Tick block price
+	tbh := time.NewTicker(12 * time.Second)   // Tick block height
 
 	for {
 		select {
+		case <-tbe.C:
+			err := t.TickEth()
+			if err != nil {
+				log.Err(err).Msg("tick ETH")
+			}
+		case <-tbetn.C:
+			err := t.TickTestnetEth()
+			if err != nil {
+				log.Err(err).Msg("tick testnet ETH")
+			}
+		case <-tbtn.C:
+			err := t.TickTestnetSUPS()
+			if err != nil {
+				log.Err(err).Msg("tick testnet SUPS")
+			}
 		case <-tbh.C:
 			err := t.TickBlockHeight()
 			if err != nil {
-				log.Err(err).Msg("tick block")
+				log.Err(err).Msg("tick block height")
 			}
-		case <-tb.C:
-			err := t.TickBlock()
+		case <-tbs.C:
+			err := t.TickMainnetSUPS()
 			if err != nil {
-				log.Err(err).Msg("tick block")
+				log.Err(err).Msg("tick mainnet SUPS")
 			}
 		case <-tp.C:
 			err := t.TickPrice()
@@ -91,7 +110,7 @@ func (t *Tickers) Start() {
 	}
 }
 
-func (t *Tickers) TickBlock() error {
+func (t *Tickers) TickMainnetSUPS() error {
 	lastBlock, err := GetInt(string(KeyLastBlock))
 	if err != nil {
 		return fmt.Errorf("get last block: %w", err)

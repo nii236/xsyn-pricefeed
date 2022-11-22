@@ -23,6 +23,9 @@ type KVKey string
 const KeyLastBlock KVKey = "last_block"
 const KeyBlockHeight KVKey = "block_height"
 
+const KeyLastBlockTestnet KVKey = "last_block_testnet"
+const KeyBlockHeightTestnet KVKey = "block_height_testnet"
+
 func Connect(connString string) error {
 	var err error
 	conn, err = pgxpool.New(context.TODO(), connString)
