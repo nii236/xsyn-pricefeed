@@ -33,13 +33,10 @@ CREATE TABLE kv (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO kv (key, value) VALUES ('last_block', '0') ON CONFLICT DO NOTHING;
-INSERT INTO kv (key, value) VALUES ('block_height', '0') ON CONFLICT DO NOTHING;
-
-UPDATE kv SET value = '7859764' WHERE key = 'last_block_goerli_sups';
-UPDATE kv SET value = '7859764' WHERE key = 'last_block_goerli_eth';
-UPDATE kv SET value = '15879854' WHERE key = 'last_block_mainnet_sups';
-UPDATE kv SET value = '15879854' WHERE key = 'last_block_mainnet_eth';
+INSERT INTO kv (key, value) VALUES ('last_block_goerli_sups', '7859764') ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;
+INSERT INTO kv (key, value) VALUES ('last_block_goerli_eth', '7859764') ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;
+INSERT INTO kv (key, value) VALUES ('last_block_mainnet_sups', '15879854') ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;
+INSERT INTO kv (key, value) VALUES ('last_block_mainnet_eth', '15879854') ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;
 
 CREATE TABLE prices (
     id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
