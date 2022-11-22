@@ -106,6 +106,9 @@ func (t *Tickers) TickBlock() error {
 	if toBlock > int64(blockHeight) {
 		toBlock = int64(blockHeight)
 	}
+	if fromBlock < 0 {
+		fromBlock = 0
+	}
 
 	log.Info().
 		Int64("last_block", int64(lastBlock)).
