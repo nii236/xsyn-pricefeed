@@ -24,6 +24,22 @@ go run main.go --rpc_url {{RPC_URL}}
 ## Migration
 
 ```sql
+
+CREATE TABLE whitelisted_addresses (
+    id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    address TEXT UNIQUE NOT NULL,
+    chain_id INTEGER NOT NULL,
+    note TEXT NOT NULL,
+
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO whitelisted_addresses (address, chain_id, note) VALUES ('0x2b64E6F89dB700272cBDB740C099a460754a8DA5', '5', 'goerli abs purchase address') ON CONFLICT DO NOTHING;
+INSERT INTO whitelisted_addresses (address, chain_id, note) VALUES ('0x48e6f3e175C58181086AEC640f21815C5EbF4fC0', '1', 'mainnet abs purchase address') ON CONFLICT DO NOTHING;
+INSERT INTO whitelisted_addresses (address, chain_id, note) VALUES ('0x70B6a7b6768a9dCE4569316C573aa806c59c8160', '5', 'goerli presale purchase address') ON CONFLICT DO NOTHING;
+INSERT INTO whitelisted_addresses (address, chain_id, note) VALUES ('0x0f3FB0E3800927Fa4757eAF9BeBD9982c5534CC3', '1', 'mainnet presale purchase address') ON CONFLICT DO NOTHING;
+
 CREATE TABLE kv (
     id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     key TEXT UNIQUE NOT NULL DEFAULT '',

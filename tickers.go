@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -10,6 +11,11 @@ import (
 )
 
 type Tickers struct {
+	ScrapeMainnetETH  bool
+	ScrapeMainnetSUPS bool
+	ScrapeGoerliETH   bool
+	ScrapeGoerliSUPS  bool
+
 	*EthClient
 	Mainnet        *ethclient.Client
 	Goerli         *ethclient.Client
@@ -20,27 +26,62 @@ type Tickers struct {
 const BaseMainnetBlock = 15879854
 const BaseGoerliBlock = 7859764
 
-func (t *Tickers) CatchUp() error {
+func (t *Tickers) CatchUpMainnetETH() error {
 	for {
+		if !t.ScrapeMainnetETH {
+			break
+		}
+		log.Info().Str("chain", "mainnet").Str("symbol", "eth").Msg("fast forwarding...")
 		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
 		}
-		lastBlockMainnetSUPS, err := GetInt(KeyLastBlockMainnetSups, BaseMainnetBlock)
+		lastBlockMainnetETH, err := GetInt(KeyLastBlockMainnetEth, BaseMainnetBlock)
 		if err != nil {
 			return fmt.Errorf("get LastBlock: %w", err)
 		}
-		if lastBlockMainnetSUPS == blockHeightMainnet {
+		if lastBlockMainnetETH == blockHeightMainnet {
 			break
 		}
 
-		err = t.TickMainnetSUPS()
+		err = t.TickMainnetEth()
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
 	}
-
+	return nil
+}
+func (t *Tickers) CatchUpGoerliETH() error {
 	for {
+		if !t.ScrapeGoerliETH {
+			break
+		}
+		log.Info().Str("chain", "goerli").Str("symbol", "eth").Msg("fast forwarding...")
+		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
+		if err != nil {
+			return fmt.Errorf("get BlockHeight: %w", err)
+		}
+		lastBlockGoerliETH, err := GetInt(KeyLastBlockGoerliEth, BaseGoerliBlock)
+		if err != nil {
+			return fmt.Errorf("get LastBlock: %w", err)
+		}
+		if lastBlockGoerliETH == blockHeightGoerli {
+			break
+		}
+
+		err = t.TickGoerliETH()
+		if err != nil {
+			return fmt.Errorf("speedup tickblock: %w", err)
+		}
+	}
+	return nil
+}
+func (t *Tickers) CatchUpGoerliSUPS() error {
+	for {
+		if !t.ScrapeGoerliSUPS {
+			break
+		}
+		log.Info().Str("chain", "goerli").Str("symbol", "sups").Msg("fast forwarding...")
 		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
@@ -58,12 +99,107 @@ func (t *Tickers) CatchUp() error {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
 	}
+	return nil
+}
+func (t *Tickers) CatchUpMainnetSUPS() error {
+	for {
+		if !t.ScrapeMainnetSUPS {
+			break
+		}
+		log.Info().Str("chain", "mainnet").Str("symbol", "sups").Msg("fast forwarding...")
+		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
+		if err != nil {
+			return fmt.Errorf("get BlockHeight: %w", err)
+		}
+		lastBlockMainnetSUPS, err := GetInt(KeyLastBlockMainnetSups, BaseMainnetBlock)
+		if err != nil {
+			return fmt.Errorf("get LastBlock: %w", err)
+		}
+		if lastBlockMainnetSUPS == blockHeightMainnet {
+			break
+		}
 
+		err = t.TickMainnetSUPS()
+		if err != nil {
+			return fmt.Errorf("speedup tickblock: %w", err)
+		}
+	}
+	return nil
+}
+func (t *Tickers) CatchUp() error {
+	messages := make(chan string)
+	wg := &sync.WaitGroup{}
+
+	wgResult := &sync.WaitGroup{}
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		worker := "mainnet_eth"
+		log.Info().Str("worker", worker).Msg("start catchup worker")
+		defer wg.Done()
+		err := t.CatchUpMainnetETH()
+		if err != nil {
+			log.Err(err).Msg("catch up mainnet eth")
+		}
+		messages <- worker
+	}(wg)
+
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		worker := "goerli_eth"
+		log.Info().Str("worker", worker).Msg("start catchup worker")
+		defer wg.Done()
+		err := t.CatchUpGoerliETH()
+		if err != nil {
+			log.Err(err).Msg("catch up goerli eth")
+		}
+		messages <- worker
+	}(wg)
+
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		worker := "goerli_sups"
+		log.Info().Str("worker", worker).Msg("start catchup worker")
+		defer wg.Done()
+		err := t.CatchUpGoerliSUPS()
+		if err != nil {
+			log.Err(err).Msg("catch up goerli sups")
+		}
+		messages <- worker
+	}(wg)
+
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		worker := "mainnet_sups"
+		log.Info().Str("worker", worker).Msg("start catchup worker")
+		defer wg.Done()
+		err := t.CatchUpMainnetSUPS()
+		if err != nil {
+			log.Err(err).Msg("catch up mainnet sups")
+		}
+		messages <- worker
+	}(wg)
+
+	wgResult.Add(1)
+	go func() {
+		defer wgResult.Done()
+		for i := range messages {
+			log.Info().Str("worker", i).Msg("catchup worker done")
+		}
+	}()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := range messages {
+			fmt.Println(i)
+		}
+	}()
+	wg.Wait()
+	close(messages)
+	wgResult.Wait()
 	return nil
 }
 
 func (t *Tickers) Start() {
-	log.Info().Msg("fast forwarding...")
 	err := t.CatchUp()
 	if err != nil {
 		log.Err(err).Msg("catching up")
@@ -74,20 +210,38 @@ func (t *Tickers) Start() {
 		log.Err(err).Msg("tick price")
 		return
 	}
-	err = t.TickGoerliSUPS()
-	if err != nil {
-		log.Err(err).Msg("tick price")
-		return
-	}
-	err = t.TickMainnetSUPS()
-	if err != nil {
-		log.Err(err).Msg("tick price")
-		return
-	}
+
 	err = t.TickBlockHeightMainnet()
 	if err != nil {
 		log.Err(err).Msg("tick block height")
 		return
+	}
+
+	if t.ScrapeMainnetSUPS {
+		err = t.TickMainnetSUPS()
+		if err != nil {
+			log.Err(err).Msg("tick mainnet ETH")
+		}
+	}
+
+	if t.ScrapeGoerliSUPS {
+		err = t.TickGoerliSUPS()
+		if err != nil {
+			log.Err(err).Msg("tick goerli SUPS")
+		}
+	}
+
+	if t.ScrapeMainnetETH {
+		err = t.TickMainnetEth()
+		if err != nil {
+			log.Err(err).Msg("tick mainnet ETH")
+		}
+	}
+	if t.ScrapeGoerliETH {
+		err = t.TickGoerliETH()
+		if err != nil {
+			log.Err(err).Msg("tick goerli ETH")
+		}
 	}
 
 	log.Info().Msg("starting tickers")
@@ -98,13 +252,32 @@ func (t *Tickers) Start() {
 	for {
 		select {
 		case <-tickerMedium.C:
-			err = t.TickMainnetSUPS()
-			if err != nil {
-				log.Err(err).Msg("tick testnet ETH")
+
+			if t.ScrapeMainnetSUPS {
+				err = t.TickMainnetSUPS()
+				if err != nil {
+					log.Err(err).Msg("tick mainnet ETH")
+				}
 			}
-			err = t.TickGoerliSUPS()
-			if err != nil {
-				log.Err(err).Msg("tick goerli SUPS")
+
+			if t.ScrapeGoerliSUPS {
+				err = t.TickGoerliSUPS()
+				if err != nil {
+					log.Err(err).Msg("tick goerli SUPS")
+				}
+			}
+
+			if t.ScrapeMainnetETH {
+				err = t.TickMainnetEth()
+				if err != nil {
+					log.Err(err).Msg("tick mainnet ETH")
+				}
+			}
+			if t.ScrapeGoerliETH {
+				err = t.TickGoerliETH()
+				if err != nil {
+					log.Err(err).Msg("tick goerli ETH")
+				}
 			}
 		case <-tickerFast.C:
 			err := t.TickBlockHeightMainnet()
@@ -124,8 +297,78 @@ func (t *Tickers) Start() {
 	}
 }
 
-func (t *Tickers) TickMainnetEth() error { return ErrNotImplemented }
-func (t *Tickers) TickTestnetEth() error { return ErrNotImplemented }
+func (t *Tickers) TickMainnetEth() error {
+	blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
+	}
+	lastBlockETHMainnet, err := GetInt(KeyLastBlockMainnetEth, BaseMainnetBlock)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
+	}
+	toBlock, err := t.TickEth(t.Mainnet, lastBlockETHMainnet, blockHeightMainnet, 1)
+	if err != nil {
+		return fmt.Errorf("tick eth Mainnet: %w", err)
+	}
+	err = SetInt(KeyLastBlockMainnetEth, int(toBlock))
+	if err != nil {
+		return fmt.Errorf("set latest block sups Mainnet: %w", err)
+	}
+	return nil
+}
+func (t *Tickers) TickGoerliETH() error {
+	blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
+	}
+	lastBlockETHGoerli, err := GetInt(KeyLastBlockGoerliEth, BaseGoerliBlock)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
+	}
+	toBlock, err := t.TickEth(t.Goerli, lastBlockETHGoerli, blockHeightGoerli, 5)
+	if err != nil {
+		return fmt.Errorf("tick eth goerli: %w", err)
+	}
+	err = SetInt(KeyLastBlockGoerliEth, int(toBlock))
+	if err != nil {
+		return fmt.Errorf("set latest block sups Goerli: %w", err)
+	}
+	return nil
+}
+
+func (t *Tickers) TickEth(client *ethclient.Client, lastBlock int, blockHeight int, chainID int64) (int64, error) {
+	fromBlock := int64(lastBlock - 50)
+	toBlock := int64(lastBlock + 9000)
+	if toBlock > int64(blockHeight) {
+		toBlock = int64(blockHeight)
+	}
+	if fromBlock < 0 {
+		fromBlock = 0
+	}
+
+	log.Info().Int64("from_block", fromBlock).Int64("chain_id", chainID).Str("symbol", "eth").Msg("scraping transfers")
+
+	whitelisted, err := WhitelistedAddresses(int(chainID))
+	if err != nil {
+		return 0, fmt.Errorf("scrape transfers: %w", err)
+	}
+
+	total, err := ScrapeETH(client, fromBlock, toBlock, whitelisted, chainID)
+	if err != nil {
+		return 0, fmt.Errorf("scrape transfers: %w", err)
+	}
+	log.Info().
+		Int64("last_block", int64(lastBlock)).
+		Int64("from_block", fromBlock).
+		Int64("to_block", toBlock).
+		Int("block_height", blockHeight).
+		Int64("chain_id", chainID).
+		Int("total", total).
+		Str("symbol", "eth").
+		Msg("scraped transfers")
+	return toBlock, nil
+}
+
 func (t *Tickers) TickGoerliSUPS() error {
 	blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 	if err != nil {
@@ -177,18 +420,21 @@ func (t *Tickers) TickSUPS(client *ethclient.Client, lastBlock int, blockHeight 
 		fromBlock = 0
 	}
 
+	log.Info().Int64("from_block", fromBlock).Int64("chain_id", chainID).Str("symbol", "sups").Msg("scraping transfers")
+
+	total, err := ScrapeSUPS(client, fromBlock, toBlock, chainID, tokenAddr, "SUPS", decimals)
+	if err != nil {
+		return 0, fmt.Errorf("scrape transfers: %w", err)
+	}
 	log.Info().
 		Int64("last_block", int64(lastBlock)).
 		Int64("from_block", fromBlock).
 		Int64("to_block", toBlock).
-		Int64("block_height", int64(blockHeight)).
-		Msg("scraping transfers")
-
-	err := ScrapeSUPS(client, fromBlock, toBlock, chainID, tokenAddr, "SUPS", decimals)
-	if err != nil {
-		return 0, fmt.Errorf("scrape transfers: %w", err)
-	}
-
+		Int("block_height", blockHeight).
+		Int64("chain_id", chainID).
+		Int("total", total).
+		Str("symbol", "sups").
+		Msg("scraped transfers")
 	return toBlock, nil
 }
 func (t *Tickers) TickBlockHeightGoerli() error {

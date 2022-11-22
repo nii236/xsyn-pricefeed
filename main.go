@@ -33,7 +33,7 @@ import (
 var log zerolog.Logger
 
 func main() {
-	log = zerolog.New(os.Stdout).With().Caller().Logger()
+	log = zerolog.New(os.Stdout).With().Caller().Logger().Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	app := &cli.App{
 
@@ -49,6 +49,10 @@ func main() {
 					&cli.StringFlag{Name: "db_url", Required: true, Usage: "Database connection string", EnvVars: []string{"DATABASE_URL"}},
 					&cli.StringFlag{Name: "token_addr", Value: "0xCF39360b26a7E54f6c456E69640671Fc5e774FA2", Usage: "Set the token addr (mainnet)", EnvVars: []string{"TOKEN_ADDR"}},
 					&cli.StringFlag{Name: "goerli_token_addr", Value: "0xfF30d2c046AEb5FA793138265Cc586De814d0040", Usage: "Set the token addr (goerli)", EnvVars: []string{"GOERLI_TOKEN_ADDR"}},
+					&cli.BoolFlag{Name: "scrape_mainnet_eth", Value: true, Usage: "Scrape mainnet eth txes", EnvVars: []string{"SCRAPE_MAINNET_ETH"}},
+					&cli.BoolFlag{Name: "scrape_mainnet_sups", Value: true, Usage: "Scrape mainnet sups txes", EnvVars: []string{"SCRAPE_MAINNET_SUPS"}},
+					&cli.BoolFlag{Name: "scrape_goerli_eth", Value: true, Usage: "Scrape goerli eth txes", EnvVars: []string{"SCRAPE_GOERLI_ETH"}},
+					&cli.BoolFlag{Name: "scrape_goerli_ups", Value: true, Usage: "Scrape goerli sups txes", EnvVars: []string{"SCRAPE_GOERLI_SUPS"}},
 				},
 				Action: func(c *cli.Context) error {
 					ttlSeconds := c.Int("ttl_seconds")
@@ -91,7 +95,17 @@ func main() {
 						return fmt.Errorf("connect db: %w", err)
 					}
 
-					t := &Tickers{ethC, ethC.Client, goerliClient, common.HexToAddress(tokenAddr), common.HexToAddress(goerliTokenAddr)}
+					t := &Tickers{
+						c.Bool("scrape_mainnet_eth"),
+						c.Bool("scrape_mainnet_sups"),
+						c.Bool("scrape_goerli_eth"),
+						c.Bool("scrape_goerli_sups"),
+						ethC,
+						ethC.Client,
+						goerliClient,
+						common.HexToAddress(tokenAddr),
+						common.HexToAddress(goerliTokenAddr),
+					}
 					go t.Start()
 
 					return Serve(ethC, rpcURL, port, ttlSeconds)
@@ -131,7 +145,8 @@ func main() {
 						Str("token_symbol", tokenSymbol).
 						Msg("scrape")
 
-					return ScrapeSUPS(client, int64(fromBlock), int64(toBlock), int64(chainId), common.HexToAddress(tokenAddr), tokenSymbol, tokenDecimals)
+					_, err = ScrapeSUPS(client, int64(fromBlock), int64(toBlock), int64(chainId), common.HexToAddress(tokenAddr), tokenSymbol, tokenDecimals)
+					return err
 				},
 			}},
 	}

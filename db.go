@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -71,6 +72,21 @@ func GetInt(key KVKey, defaultValue ...int) (int, error) {
 }
 func SetInt(key KVKey, value int) error {
 	return Set(key, strconv.Itoa(value))
+}
+
+func WhitelistedAddresses(chainID int) ([]common.Address, error) {
+	q := `SELECT address FROM whitelisted_addresses WHERE chain_id = $1`
+	resultStr := []string{}
+	err := pgxscan.Select(context.TODO(), conn, &resultStr, q, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("set block: %w", err)
+	}
+	result := []common.Address{}
+	for _, addrStr := range resultStr {
+		result = append(result, common.HexToAddress(addrStr))
+	}
+
+	return result, nil
 }
 
 func Get(key KVKey, defaultValue ...int) (string, error) {
