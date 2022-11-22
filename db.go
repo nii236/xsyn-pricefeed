@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 
@@ -20,11 +21,13 @@ var conn *pgxpool.Pool
 
 type KVKey string
 
-const KeyLastBlock KVKey = "last_block"
-const KeyBlockHeight KVKey = "block_height"
+const KeyBlockHeightGoerli KVKey = "block_height_goerli"
+const KeyLastBlockGoerliSups KVKey = "last_block_goerli_sups"
+const KeyLastBlockGoerliEth KVKey = "last_block_goerli_eth"
 
-const KeyLastBlockTestnet KVKey = "last_block_testnet"
-const KeyBlockHeightTestnet KVKey = "block_height_testnet"
+const KeyBlockHeightMainnet KVKey = "block_height_mainnet"
+const KeyLastBlockMainnetSups KVKey = "last_block_mainnet_sups"
+const KeyLastBlockMainnetEth KVKey = "last_block_mainnet_eth"
 
 func Connect(connString string) error {
 	var err error
@@ -57,8 +60,8 @@ func Set(key KVKey, value string) error {
 	return nil
 }
 
-func GetInt(key string) (int, error) {
-	resultStr, err := Get(key)
+func GetInt(key KVKey, defaultValue ...int) (int, error) {
+	resultStr, err := Get(key, defaultValue...)
 	if err != nil {
 		return 0, fmt.Errorf("get int: %w", err)
 	}
@@ -72,10 +75,13 @@ func SetInt(key KVKey, value int) error {
 	return Set(key, strconv.Itoa(value))
 }
 
-func Get(key string) (string, error) {
+func Get(key KVKey, defaultValue ...int) (string, error) {
 	q := `SELECT value FROM kv WHERE key = $1 LIMIT 1`
 	var result string
 	err := pgxscan.Get(context.TODO(), conn, &result, q, key)
+	if err != nil && errors.Is(err, pgx.ErrNoRows) && len(defaultValue) > 0 {
+		return strconv.Itoa(defaultValue[0]), SetInt(key, defaultValue[0])
+	}
 	if err != nil {
 		return "", fmt.Errorf("set block: %w", err)
 	}
@@ -92,7 +98,7 @@ func AddPrice(price *PriceResponse) error {
 	return nil
 }
 func AddTransfer(transfer *Transfer) error {
-	q := `INSERT INTO transfers	(block, log_index, chain_id, contract, symbol, decimals, tx_id, from_address, to_address, amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+	q := `INSERT INTO transfers	(block, log_index, chain_id, contract, symbol, decimals, tx_id, from_address, to_address, amount, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	_, err := conn.Exec(context.TODO(), q,
 		transfer.Block,
@@ -105,6 +111,7 @@ func AddTransfer(transfer *Transfer) error {
 		transfer.FromAddress.Hex(),
 		transfer.ToAddress.Hex(),
 		transfer.Amount.String(),
+		transfer.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert transfer: %w", err)
@@ -112,23 +119,15 @@ func AddTransfer(transfer *Transfer) error {
 	return nil
 
 }
-func Transfers(fromBlock int, toAddr common.Address) ([]*TransferAPIResponse, error) {
-	q := `SELECT * FROM transfers WHERE block > $1 AND to_address = $2`
+func Transfers(symbol string, blockHeight int, sinceBlock int, toAddr common.Address, chainID int) ([]*TransferAPIResponse, error) {
+	q := `SELECT * FROM transfers WHERE block >= $1 AND to_address = $2 AND chain_id = $3`
 	resultDB := []*TransferRecord{}
-	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, fromBlock, toAddr.Hex())
-	if err != nil {
+	err := pgxscan.Select(context.TODO(), conn, &resultDB, q, sinceBlock, toAddr.Hex(), chainID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("set block: %w", err)
 	}
 
 	result := []*TransferAPIResponse{}
-	blockHeightStr, err := Get(string(KeyBlockHeight))
-	if err != nil {
-		return nil, fmt.Errorf("get block height: %w", err)
-	}
-	blockHeight, err := strconv.Atoi(blockHeightStr)
-	if err != nil {
-		return nil, fmt.Errorf("convert block height: %w", err)
-	}
 
 	for _, record := range resultDB {
 		confirmations := blockHeight - int(record.Block)
@@ -144,6 +143,7 @@ func Transfers(fromBlock int, toAddr common.Address) ([]*TransferAPIResponse, er
 			ContractAddress: record.Contract,
 			Value:           record.Amount.Shift(-18).String(),
 			ValueInt:        record.Amount.String(),
+			Timestamp:       record.Timestamp,
 			ValueDecimals:   record.Decimals,
 		})
 
@@ -163,6 +163,7 @@ type TransferRecord struct {
 	FromAddress string
 	ToAddress   string
 	Amount      decimal.Decimal
+	Timestamp   int64
 	CreatedAt   time.Time
 }
 type TransferAPIResponse struct {
@@ -177,5 +178,6 @@ type TransferAPIResponse struct {
 	ContractAddress string `json:"contract_address"`
 	Value           string `json:"value"`
 	ValueInt        string `json:"value_int"`
+	Timestamp       int64  `json:"timestamp"`
 	ValueDecimals   int    `json:"value_decimals"`
 }

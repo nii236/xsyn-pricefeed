@@ -56,7 +56,7 @@ CREATE TABLE transfers (
     from_address TEXT NOT NULL,
     to_address TEXT NOT NULL,
     amount NUMERIC(28),
-
+    timestamp INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (tx_id, log_index, block)
 );

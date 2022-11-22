@@ -11,12 +11,68 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/shopspring/decimal"
 )
 
-func Scrape(client *ethclient.Client, fromBlock int64, toBlock int64, chainID int64, tokenAddr common.Address, tokenSymbol string, tokenDecimals int) error {
+func ScrapeETH(client *ethclient.Client, fromBlock int64, toBlock int64, toAddress common.Address, chainID int64) error {
+	for blockNumber := fromBlock; blockNumber < toBlock; blockNumber++ {
+		block, err := client.BlockByNumber(context.TODO(), big.NewInt(blockNumber))
+		if err != nil {
+			return err
+		}
+		txes := block.Transactions()
+		for _, tx := range txes {
+			if tx.To() != nil && *tx.To() == toAddress {
+				msg, err := tx.AsMessage(types.LatestSignerForChainID(big.NewInt(chainID)), nil)
+				if err != nil {
+					log.Err(err).
+						Uint64("block", block.NumberU64()).
+						Int64("chain_id", chainID).
+						Str("symbol", "ETH").
+						Int("decimals", 18).
+						Str("tx_id", tx.Hash().Hex()).
+						Msg("eth native transfer")
+					continue
+				}
+				to := common.HexToAddress("0x0")
+				if msg.To() != nil {
+					to = *msg.To()
+				}
+				result := &Transfer{
+					Block:       block.Number().Uint64(),
+					Symbol:      "ETH",
+					Decimals:    18,
+					ChainID:     chainID,
+					TxID:        tx.Hash(),
+					FromAddress: msg.From(),
+					ToAddress:   to,
+					Amount:      decimal.NewFromBigInt(msg.Value(), 0),
+				}
+
+				err = AddTransfer(result)
+				if err != nil {
+					log.Err(err).
+						Uint64("block", result.Block).
+						Int64("chain_id", result.ChainID).
+						Str("contract", result.Contract.Hex()).
+						Str("symbol", result.Symbol).
+						Int("decimals", result.Decimals).
+						Str("tx_id", result.TxID.Hex()).
+						Str("from_address", result.FromAddress.Hex()).
+						Str("to_address", result.ToAddress.Hex()).
+						Str("amount", result.Amount.String()).
+						Msg("insert transfer")
+					continue
+				}
+			}
+		}
+	}
+	return nil
+}
+func ScrapeSUPS(client *ethclient.Client, fromBlock int64, toBlock int64, chainID int64, tokenAddr common.Address, tokenSymbol string, tokenDecimals int) error {
 	query := ethereum.FilterQuery{
 		FromBlock: big.NewInt(fromBlock),
 		ToBlock:   big.NewInt(toBlock),
@@ -36,6 +92,7 @@ func Scrape(client *ethclient.Client, fromBlock int64, toBlock int64, chainID in
 	logTransferSig := []byte("Transfer(address,address,uint256)")
 	logTransferSigHash := crypto.Keccak256Hash(logTransferSig)
 	total := 0
+
 	for _, vLog := range logs {
 		switch vLog.Topics[0].Hex() {
 		case logTransferSigHash.Hex():
@@ -47,8 +104,12 @@ func Scrape(client *ethclient.Client, fromBlock int64, toBlock int64, chainID in
 			to := common.HexToAddress(vLog.Topics[2].Hex())
 			amtBig := ev[0].(*big.Int)
 			amt := decimal.NewFromBigInt(amtBig, 0)
-
-			result := &Transfer{vLog.BlockNumber, vLog.Index, chainID, tokenAddr, tokenSymbol, tokenDecimals, vLog.TxHash, from, to, amt}
+			block, err := client.BlockByHash(context.TODO(), vLog.BlockHash)
+			if err != nil {
+				log.Err(err).Msg("get block")
+				continue
+			}
+			result := &Transfer{vLog.BlockNumber, vLog.Index, chainID, tokenAddr, tokenSymbol, tokenDecimals, vLog.TxHash, from, to, amt, block.Time()}
 			err = AddTransfer(result)
 			if err != nil {
 				log.Err(err).
@@ -81,4 +142,5 @@ type Transfer struct {
 	FromAddress common.Address
 	ToAddress   common.Address
 	Amount      decimal.Decimal
+	CreatedAt   uint64
 }

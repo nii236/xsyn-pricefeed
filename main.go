@@ -46,16 +46,20 @@ func main() {
 					&cli.IntFlag{Name: "ttl_seconds", Value: 300, Usage: "seconds to cache the responses", EnvVars: []string{"TTL_SECONDS"}},
 					&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on", EnvVars: []string{"PORT"}},
 					&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL", EnvVars: []string{"RPC_URL"}},
+					&cli.StringFlag{Name: "goerli_rpc_url", Required: true, Usage: "Goerli ETH node RPC URL", EnvVars: []string{"GOERLI_RPC_URL"}},
 					&cli.StringFlag{Name: "db_url", Required: true, Usage: "Database connection string", EnvVars: []string{"DATABASE_URL"}},
-					&cli.StringFlag{Name: "token_addr", Value: "0xCF39360b26a7E54f6c456E69640671Fc5e774FA2", Usage: "Set the token addr", EnvVars: []string{"TOKEN_ADDR"}},
+					&cli.StringFlag{Name: "token_addr", Value: "0xCF39360b26a7E54f6c456E69640671Fc5e774FA2", Usage: "Set the token addr (mainnet)", EnvVars: []string{"TOKEN_ADDR"}},
+					&cli.StringFlag{Name: "goerli_token_addr", Value: "0xfF30d2c046AEb5FA793138265Cc586De814d0040", Usage: "Set the token addr (goerli)", EnvVars: []string{"GOERLI_TOKEN_ADDR"}},
 				},
 				Action: func(c *cli.Context) error {
 					purchaseAddr := common.HexToAddress(c.String("purchase_address"))
 					ttlSeconds := c.Int("ttl_seconds")
 					rpcURL := c.String("rpc_url")
+					goerliRpcUrl := c.String("goerli_rpc_url")
 					port := c.Int("port")
 					dbURL := c.String("db_url")
 					tokenAddr := c.String("token_addr")
+					goerliTokenAddr := c.String("goerli_token_addr")
 					err := Connect(dbURL)
 					if err != nil {
 						return fmt.Errorf("connect db: %w", err)
@@ -64,9 +68,14 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("dial eth node: %w", err)
 					}
+					goerliClient, err := ethclient.Dial(goerliRpcUrl)
+					if err != nil {
+						return fmt.Errorf("dial goerli eth node: %w", err)
+					}
 					ethusdAddr := common.HexToAddress("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
 					bnbethAddr := common.HexToAddress("0x14e613ac84a31f709eadbdf89c6cc390fdc9540a")
 					supethAddr := common.HexToAddress("0xa1e5dc01359c2920c096f0091fc7f0bf69812ca7")
+
 					bnbethContract, err := ethusd.NewEthusd(bnbethAddr, client)
 					if err != nil {
 						return fmt.Errorf("create ethusd contract: %w", err)
@@ -84,7 +93,7 @@ func main() {
 						return fmt.Errorf("connect db: %w", err)
 					}
 
-					t := &Tickers{ethC, purchaseAddr, common.HexToAddress(tokenAddr)}
+					t := &Tickers{ethC, ethC.Client, goerliClient, purchaseAddr, common.HexToAddress(tokenAddr), common.HexToAddress(goerliTokenAddr)}
 					go t.Start()
 
 					return Serve(ethC, rpcURL, port, ttlSeconds, purchaseAddr)
@@ -124,7 +133,7 @@ func main() {
 						Str("token_symbol", tokenSymbol).
 						Msg("scrape")
 
-					return Scrape(client, int64(fromBlock), int64(toBlock), int64(chainId), common.HexToAddress(tokenAddr), tokenSymbol, tokenDecimals)
+					return ScrapeSUPS(client, int64(fromBlock), int64(toBlock), int64(chainId), common.HexToAddress(tokenAddr), tokenSymbol, tokenDecimals)
 				},
 			}},
 	}
@@ -172,7 +181,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int, purchaseAdd
 	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
 
 	r.Handle("/metrics", promhttp.Handler())
-	r.Get("/api/transfers", http.HandlerFunc(c.Transfers))
+	r.Get("/api/transfers/symbol/{symbol}/chain_id/{chain_id}/to/{to_address}", http.HandlerFunc(c.Transfers))
 	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
 	r.Get("/api/eth_price", cacheClient.Middleware(http.HandlerFunc(c.Eth)).ServeHTTP)
@@ -183,8 +192,17 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int, purchaseAdd
 }
 
 func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
+
+	symbol := chi.URLParam(r, "symbol")
+	chainIdStr := chi.URLParam(r, "chain_id")
+	toAddress := common.HexToAddress(chi.URLParam(r, "to_address"))
+	chainID, err := strconv.Atoi(chainIdStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	sinceBlockStr := r.URL.Query().Get("since_block")
-	var err error
 	sinceBlock := 0
 	if sinceBlockStr != "" {
 		sinceBlock, err = strconv.Atoi(sinceBlockStr)
@@ -194,7 +212,23 @@ func (c *Controller) Transfers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := Transfers(sinceBlock, c.PurchaseAddr)
+	blockheight := 0
+	switch chainID {
+	case 1:
+		blockheight, err = GetInt(KeyBlockHeightMainnet)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case 5:
+		blockheight, err = GetInt(KeyBlockHeightGoerli)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	result, err := Transfers(symbol, blockheight, sinceBlock, toAddress, chainID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

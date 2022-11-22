@@ -6,102 +6,114 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type Tickers struct {
 	*EthClient
-	PurchaseAddr common.Address
-	SUPSAddr     common.Address
+	Mainnet        *ethclient.Client
+	Goerli         *ethclient.Client
+	PurchaseAddr   common.Address
+	SUPSAddr       common.Address
+	GoerliSUPSAddr common.Address
 }
 
 func (t *Tickers) CatchUp() error {
 	for {
-		blockHeight, err := GetInt(string(KeyBlockHeight))
+		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, 15879854)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
 		}
-		lastBlock, err := GetInt(string(KeyLastBlock))
+		lastBlockMainnetSUPS, err := GetInt(KeyLastBlockMainnetSups, 15879854)
 		if err != nil {
 			return fmt.Errorf("get LastBlock: %w", err)
 		}
-		if lastBlock == blockHeight {
+		if lastBlockMainnetSUPS == blockHeightMainnet {
 			break
 		}
+
 		err = t.TickMainnetSUPS()
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
 	}
+
+	for {
+		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, 7859764)
+		if err != nil {
+			return fmt.Errorf("get BlockHeight: %w", err)
+		}
+		lastBlockGoerliSUPS, err := GetInt(KeyLastBlockGoerliSups, 7859764)
+		if err != nil {
+			return fmt.Errorf("get LastBlock: %w", err)
+		}
+		if lastBlockGoerliSUPS == blockHeightGoerli {
+			break
+		}
+
+		err = t.TickGoerliSUPS()
+		if err != nil {
+			return fmt.Errorf("speedup tickblock: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func (t *Tickers) Start() {
-	blockHeight, err := GetInt(string(KeyBlockHeight))
+	log.Info().Msg("fast forwarding...")
+	err := t.CatchUp()
 	if err != nil {
-		log.Fatal().Err(err).Msg("start ticker")
-	}
-	lastBlock, err := GetInt(string(KeyLastBlock))
-	if err != nil {
-		log.Fatal().Err(err).Msg("start ticker")
+		log.Err(err).Msg("catching up")
 	}
 
-	if lastBlock < blockHeight {
-		log.Info().Msg("fast forwarding...")
-		err = t.CatchUp()
-		if err != nil {
-			log.Fatal().Err(err).Msg("failed to catchup")
-		}
-	}
-
-	log.Info().Msg("starting tickers")
 	err = t.TickPrice()
 	if err != nil {
 		log.Err(err).Msg("tick price")
+		return
+	}
+	err = t.TickGoerliSUPS()
+	if err != nil {
+		log.Err(err).Msg("tick price")
+		return
 	}
 	err = t.TickMainnetSUPS()
 	if err != nil {
-		log.Err(err).Msg("tick block")
+		log.Err(err).Msg("tick price")
+		return
 	}
-	err = t.TickBlockHeight()
+	err = t.TickBlockHeightMainnet()
 	if err != nil {
 		log.Err(err).Msg("tick block height")
+		return
 	}
 
-	tbs := time.NewTicker(20 * time.Second)   // Tick block mainnet SUPS
-	tbtn := time.NewTicker(20 * time.Second)  // Tick block testnet SUPS
-	tbe := time.NewTicker(20 * time.Second)   // Tick block mainnet ETH
-	tbetn := time.NewTicker(20 * time.Second) // Tick block testnet ETH
-	tp := time.NewTicker(60 * time.Second)    // Tick block price
-	tbh := time.NewTicker(12 * time.Second)   // Tick block height
+	log.Info().Msg("starting tickers")
+	tickerFast := time.NewTicker(12 * time.Second)
+	tickerMedium := time.NewTicker(20 * time.Second)
+	tickerSlow := time.NewTicker(60 * time.Second)
 
 	for {
 		select {
-		case <-tbe.C:
-			err := t.TickEth()
-			if err != nil {
-				log.Err(err).Msg("tick ETH")
-			}
-		case <-tbetn.C:
-			err := t.TickTestnetEth()
+		case <-tickerMedium.C:
+			err = t.TickMainnetSUPS()
 			if err != nil {
 				log.Err(err).Msg("tick testnet ETH")
 			}
-		case <-tbtn.C:
-			err := t.TickTestnetSUPS()
+			err = t.TickGoerliSUPS()
 			if err != nil {
-				log.Err(err).Msg("tick testnet SUPS")
+				log.Err(err).Msg("tick goerli SUPS")
 			}
-		case <-tbh.C:
-			err := t.TickBlockHeight()
+		case <-tickerFast.C:
+			err := t.TickBlockHeightMainnet()
 			if err != nil {
-				log.Err(err).Msg("tick block height")
+				log.Err(err).Msg("tick block height mainnet")
 			}
-		case <-tbs.C:
-			err := t.TickMainnetSUPS()
+			err = t.TickBlockHeightGoerli()
 			if err != nil {
-				log.Err(err).Msg("tick mainnet SUPS")
+				log.Err(err).Msg("tick block height goerli")
 			}
-		case <-tp.C:
+		case <-tickerSlow.C:
 			err := t.TickPrice()
 			if err != nil {
 				log.Err(err).Msg("tick price")
@@ -110,20 +122,50 @@ func (t *Tickers) Start() {
 	}
 }
 
-func (t *Tickers) TickEth() error         { return ErrNotImplemented }
-func (t *Tickers) TickTestnetEth() error  { return ErrNotImplemented }
-func (t *Tickers) TickTestnetSUPS() error { return ErrNotImplemented }
+func (t *Tickers) TickMainnetEth() error { return ErrNotImplemented }
+func (t *Tickers) TickTestnetEth() error { return ErrNotImplemented }
+func (t *Tickers) TickGoerliSUPS() error {
+	blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, 7859764)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
+	}
+	lastBlockSUPSGoerli, err := GetInt(KeyLastBlockGoerliSups, 7859764)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
+	}
 
+	toBlock, err := t.TickSUPS(t.Goerli, lastBlockSUPSGoerli, blockHeightGoerli, 5, 18, t.GoerliSUPSAddr)
+	if err != nil {
+		return fmt.Errorf("tick sups Goerli: %w", err)
+	}
+	err = SetInt(KeyLastBlockGoerliSups, int(toBlock))
+	if err != nil {
+		return fmt.Errorf("set latest block sups Goerli: %w", err)
+	}
+	return nil
+}
 func (t *Tickers) TickMainnetSUPS() error {
-	lastBlock, err := GetInt(string(KeyLastBlock))
+	blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, 15879854)
 	if err != nil {
-		return fmt.Errorf("get last block: %w", err)
+		return fmt.Errorf("start ticker: %w", err)
+	}
+	lastBlockSUPSMainnet, err := GetInt(KeyLastBlockMainnetSups, 15879854)
+	if err != nil {
+		return fmt.Errorf("start ticker: %w", err)
 	}
 
-	blockHeight, err := GetInt(string(KeyBlockHeight))
+	toBlock, err := t.TickSUPS(t.Mainnet, lastBlockSUPSMainnet, blockHeightMainnet, 1, 18, t.SUPSAddr)
 	if err != nil {
-		return fmt.Errorf("get block height: %w", err)
+		return fmt.Errorf("tick sups mainnet: %w", err)
 	}
+	err = SetInt(KeyLastBlockMainnetSups, int(toBlock))
+	if err != nil {
+		return fmt.Errorf("set latest block sups mainnet: %w", err)
+	}
+	return nil
+}
+
+func (t *Tickers) TickSUPS(client *ethclient.Client, lastBlock int, blockHeight int, chainID int64, decimals int, tokenAddr common.Address) (int64, error) {
 	fromBlock := int64(lastBlock - 50)
 	toBlock := int64(lastBlock + 9000)
 	if toBlock > int64(blockHeight) {
@@ -140,29 +182,35 @@ func (t *Tickers) TickMainnetSUPS() error {
 		Int64("block_height", int64(blockHeight)).
 		Msg("scraping transfers")
 
-	err = Scrape(t.EthClient.Client, fromBlock, toBlock, 1, t.SUPSAddr, "SUPS", 18)
+	err := ScrapeSUPS(client, fromBlock, toBlock, chainID, tokenAddr, "SUPS", decimals)
 	if err != nil {
-		return fmt.Errorf("scrape transfers: %w", err)
+		return 0, fmt.Errorf("scrape transfers: %w", err)
 	}
 
-	err = SetInt(KeyLastBlock, int(toBlock))
-	if err != nil {
-		return fmt.Errorf("set last block: %w", err)
-	}
-
-	return nil
+	return toBlock, nil
 }
-
-func (t *Tickers) TickBlockHeight() error {
-	height, err := t.Client.BlockNumber(context.TODO())
+func (t *Tickers) TickBlockHeightGoerli() error {
+	height, err := t.Goerli.BlockNumber(context.TODO())
 	if err != nil {
 		return fmt.Errorf("block height: %w", err)
 	}
-	err = SetInt(KeyBlockHeight, int(height))
+	err = SetInt(KeyBlockHeightGoerli, int(height))
 	if err != nil {
 		return fmt.Errorf("set block height: %w", err)
 	}
-	log.Info().Int("block_height", int(height)).Msg("scraping block height")
+	log.Info().Int("block_height_goerli", int(height)).Msg("scraping block height")
+	return nil
+}
+func (t *Tickers) TickBlockHeightMainnet() error {
+	height, err := t.Mainnet.BlockNumber(context.TODO())
+	if err != nil {
+		return fmt.Errorf("block height: %w", err)
+	}
+	err = SetInt(KeyBlockHeightMainnet, int(height))
+	if err != nil {
+		return fmt.Errorf("set block height: %w", err)
+	}
+	log.Info().Int("block_height_mainnet", int(height)).Msg("scraping block height")
 	return nil
 }
 
