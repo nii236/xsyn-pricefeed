@@ -157,6 +157,26 @@ func main() {
 
 }
 
+func LoggerMiddleware(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+		t1 := time.Now()
+		defer func() {
+			log.Info().
+				Str("method", r.Method).
+				Str("path", r.URL.String()).
+				Int("status", ww.Status()).
+				Int("bytes", ww.BytesWritten()).
+				Str("duration", fmt.Sprintf("%dus", int(time.Since(t1)/time.Microsecond))).
+				Msg("api call")
+		}()
+
+		next.ServeHTTP(ww, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
 func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 
 	memcached, err := memory.NewAdapter(
@@ -189,7 +209,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 	}))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	r.Use(LoggerMiddleware)
 	r.Use(middleware.Recoverer)
 	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
 
