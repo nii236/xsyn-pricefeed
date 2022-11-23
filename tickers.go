@@ -27,11 +27,12 @@ const BaseMainnetBlock = 15879854
 const BaseGoerliBlock = 7859764
 
 func (t *Tickers) CatchUpMainnetETH() error {
+	iter := 0
 	for {
+		log.Info().Int("tick", iter).Str("chain", "mainnet").Str("symbol", "eth").Msg("fast forwarding...")
 		if !t.ScrapeMainnetETH {
 			break
 		}
-		log.Info().Str("chain", "mainnet").Str("symbol", "eth").Msg("fast forwarding...")
 		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
@@ -48,15 +49,17 @@ func (t *Tickers) CatchUpMainnetETH() error {
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
+		iter++
 	}
 	return nil
 }
 func (t *Tickers) CatchUpGoerliETH() error {
+	iter := 0
 	for {
 		if !t.ScrapeGoerliETH {
 			break
 		}
-		log.Info().Str("chain", "goerli").Str("symbol", "eth").Msg("fast forwarding...")
+		log.Info().Int("tick", iter).Str("chain", "goerli").Str("symbol", "eth").Msg("fast forwarding...")
 		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
@@ -73,15 +76,17 @@ func (t *Tickers) CatchUpGoerliETH() error {
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
+		iter++
 	}
 	return nil
 }
 func (t *Tickers) CatchUpGoerliSUPS() error {
+	iter := 0
 	for {
 		if !t.ScrapeGoerliSUPS {
 			break
 		}
-		log.Info().Str("chain", "goerli").Str("symbol", "sups").Msg("fast forwarding...")
+		log.Info().Int("tick", iter).Str("chain", "goerli").Str("symbol", "sups").Msg("fast forwarding...")
 		blockHeightGoerli, err := GetInt(KeyBlockHeightGoerli, BaseGoerliBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
@@ -98,15 +103,17 @@ func (t *Tickers) CatchUpGoerliSUPS() error {
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
+		iter++
 	}
 	return nil
 }
 func (t *Tickers) CatchUpMainnetSUPS() error {
+	iter := 0
 	for {
 		if !t.ScrapeMainnetSUPS {
 			break
 		}
-		log.Info().Str("chain", "mainnet").Str("symbol", "sups").Msg("fast forwarding...")
+		log.Info().Int("tick", iter).Str("chain", "mainnet").Str("symbol", "sups").Msg("fast forwarding...")
 		blockHeightMainnet, err := GetInt(KeyBlockHeightMainnet, BaseMainnetBlock)
 		if err != nil {
 			return fmt.Errorf("get BlockHeight: %w", err)
@@ -123,6 +130,7 @@ func (t *Tickers) CatchUpMainnetSUPS() error {
 		if err != nil {
 			return fmt.Errorf("speedup tickblock: %w", err)
 		}
+		iter++
 	}
 	return nil
 }
