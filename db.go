@@ -160,6 +160,7 @@ func Transfers(symbol string, blockHeight int, sinceBlock int, chainID int) ([]*
 			ValueInt:        record.Amount.String(),
 			Timestamp:       record.Timestamp,
 			ValueDecimals:   record.Decimals,
+			Symbol:          record.Symbol,
 		})
 
 	}
@@ -195,4 +196,5 @@ type TransferAPIResponse struct {
 	ValueInt        string `json:"value_int"`
 	Timestamp       int64  `json:"timestamp"`
 	ValueDecimals   int    `json:"value_decimals"`
+	Symbol          string `json:"symbol"`
 }
