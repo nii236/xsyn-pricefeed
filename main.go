@@ -66,7 +66,7 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("connect db: %w", err)
 					}
-					client, err := ethclient.Dial(rpcURL)
+					mainnetClient, err := ethclient.Dial(rpcURL)
 					if err != nil {
 						return fmt.Errorf("dial eth node %s: %w", rpcURL, err)
 					}
@@ -74,23 +74,27 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("dial goerli eth node %s: %w", rpcURL, err)
 					}
+
+					s := &Subscriber{mainnetClient, goerliClient}
+					s.Start()
+
 					ethusdAddr := common.HexToAddress("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
 					bnbethAddr := common.HexToAddress("0x14e613ac84a31f709eadbdf89c6cc390fdc9540a")
 					supethAddr := common.HexToAddress("0xa1e5dc01359c2920c096f0091fc7f0bf69812ca7")
 
-					bnbethContract, err := ethusd.NewEthusd(bnbethAddr, client)
+					bnbethContract, err := ethusd.NewEthusd(bnbethAddr, mainnetClient)
 					if err != nil {
 						return fmt.Errorf("create ethusd contract: %w", err)
 					}
-					ethusdContract, err := ethusd.NewEthusd(ethusdAddr, client)
+					ethusdContract, err := ethusd.NewEthusd(ethusdAddr, mainnetClient)
 					if err != nil {
 						return fmt.Errorf("create ethusd contract: %w", err)
 					}
-					supsethContract, err := supseth.NewSupseth(supethAddr, client)
+					supsethContract, err := supseth.NewSupseth(supethAddr, mainnetClient)
 					if err != nil {
 						return fmt.Errorf("create supseth contract: %w", err)
 					}
-					ethC := &EthClient{client, ethusdContract, supsethContract, bnbethContract}
+					ethC := &EthClient{mainnetClient, ethusdContract, supsethContract, bnbethContract}
 					if err != nil {
 						return fmt.Errorf("connect db: %w", err)
 					}
