@@ -216,10 +216,12 @@ func (t *Tickers) Start() {
 		log.Err(err).Msg("tick price")
 		return
 	}
-	err = t.CatchUp()
-	if err != nil {
-		log.Err(err).Msg("catching up")
-	}
+	go func() {
+		err = t.CatchUp()
+		if err != nil {
+			log.Err(err).Msg("catching up")
+		}
+	}()
 
 	log.Info().Msg("starting tickers")
 	tickerFast := time.NewTicker(12 * time.Second)
@@ -321,7 +323,12 @@ func (t *Tickers) TickEth(client *ethclient.Client, lastBlock int, blockHeight i
 		return 0, fmt.Errorf("get scrape range: %w", err)
 	}
 
-	fromBlock := int64(lastBlock - 50)
+	scrapeRangeLookback, err := GetInt(KeyScrapeRangeLookbackEth, 5)
+	if err != nil {
+		return 0, fmt.Errorf("get scrape range: %w", err)
+	}
+
+	fromBlock := int64(lastBlock - scrapeRangeLookback)
 	toBlock := int64(lastBlock + scrapeRange)
 	if toBlock > int64(blockHeight) {
 		toBlock = int64(blockHeight)
@@ -399,7 +406,13 @@ func (t *Tickers) TickSUPS(client *ethclient.Client, lastBlock int, blockHeight 
 	if err != nil {
 		return 0, fmt.Errorf("get scrape range: %w", err)
 	}
-	fromBlock := int64(lastBlock - 50)
+
+	scrapeRangeLookback, err := GetInt(KeyScrapeRangeLookbackSups, 5)
+	if err != nil {
+		return 0, fmt.Errorf("get scrape range: %w", err)
+	}
+
+	fromBlock := int64(lastBlock - scrapeRangeLookback)
 	toBlock := int64(lastBlock + scrapeRange)
 	if toBlock > int64(blockHeight) {
 		toBlock = int64(blockHeight)
