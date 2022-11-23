@@ -316,8 +316,13 @@ func (t *Tickers) TickGoerliETH() error {
 }
 
 func (t *Tickers) TickEth(client *ethclient.Client, lastBlock int, blockHeight int, chainID int64) (int64, error) {
+	scrapeRange, err := GetInt(KeyScrapeRangeEth, 500)
+	if err != nil {
+		return 0, fmt.Errorf("get scrape range: %w", err)
+	}
+
 	fromBlock := int64(lastBlock - 50)
-	toBlock := int64(lastBlock + 9000)
+	toBlock := int64(lastBlock + scrapeRange)
 	if toBlock > int64(blockHeight) {
 		toBlock = int64(blockHeight)
 	}
@@ -390,8 +395,12 @@ func (t *Tickers) TickMainnetSUPS() error {
 }
 
 func (t *Tickers) TickSUPS(client *ethclient.Client, lastBlock int, blockHeight int, chainID int64, decimals int, tokenAddr common.Address) (int64, error) {
+	scrapeRange, err := GetInt(KeyScrapeRangeEth, 5000)
+	if err != nil {
+		return 0, fmt.Errorf("get scrape range: %w", err)
+	}
 	fromBlock := int64(lastBlock - 50)
-	toBlock := int64(lastBlock + 9000)
+	toBlock := int64(lastBlock + scrapeRange)
 	if toBlock > int64(blockHeight) {
 		toBlock = int64(blockHeight)
 	}

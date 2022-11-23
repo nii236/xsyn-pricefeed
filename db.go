@@ -22,6 +22,8 @@ var conn *pgxpool.Pool
 
 type KVKey string
 
+const KeyScrapeRangeEth KVKey = "scrape_range_eth"
+const KeyScrapeRangeSups KVKey = "scrape_range_sups"
 const KeyBlockHeightGoerli KVKey = "block_height_goerli"
 const KeyLastBlockGoerliSups KVKey = "last_block_goerli_sups"
 const KeyLastBlockGoerliEth KVKey = "last_block_goerli_eth"
