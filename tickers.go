@@ -402,12 +402,12 @@ func (t *Tickers) TickMainnetSUPS() error {
 }
 
 func (t *Tickers) TickSUPS(client *ethclient.Client, lastBlock int, blockHeight int, chainID int64, decimals int, tokenAddr common.Address) (int64, error) {
-	scrapeRange, err := GetInt(KeyScrapeRangeEth, 5000)
+	scrapeRange, err := GetInt(KeyScrapeRangeSups, 5000)
 	if err != nil {
 		return 0, fmt.Errorf("get scrape range: %w", err)
 	}
 
-	scrapeRangeLookback, err := GetInt(KeyScrapeRangeLookbackSups, 5)
+	scrapeRangeLookback, err := GetInt(KeyScrapeRangeLookbackSups, 50)
 	if err != nil {
 		return 0, fmt.Errorf("get scrape range: %w", err)
 	}
