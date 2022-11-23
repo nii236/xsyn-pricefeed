@@ -232,8 +232,16 @@ func (t *Tickers) Start() {
 		select {
 		case <-tickerFast.C:
 			log.Info().Str("type", "medium").Msg("running ticker")
+
 			if t.ScrapeMainnetSUPS {
 				err = t.TickMainnetSUPS()
+				if err != nil {
+					log.Err(err).Msg("tick mainnet ETH")
+				}
+			}
+
+			if t.ScrapeMainnetETH {
+				err = t.TickMainnetEth()
 				if err != nil {
 					log.Err(err).Msg("tick mainnet ETH")
 				}
@@ -246,18 +254,13 @@ func (t *Tickers) Start() {
 				}
 			}
 
-			if t.ScrapeMainnetETH {
-				err = t.TickMainnetEth()
-				if err != nil {
-					log.Err(err).Msg("tick mainnet ETH")
-				}
-			}
 			if t.ScrapeGoerliETH {
 				err = t.TickGoerliETH()
 				if err != nil {
 					log.Err(err).Msg("tick goerli ETH")
 				}
 			}
+
 			log.Info().Str("type", "fast").Msg("running ticker")
 			err := t.TickBlockHeightMainnet()
 			if err != nil {

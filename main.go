@@ -75,9 +75,6 @@ func main() {
 						return fmt.Errorf("dial goerli eth node %s: %w", rpcURL, err)
 					}
 
-					s := &Subscriber{mainnetClient, goerliClient}
-					s.Start()
-
 					ethusdAddr := common.HexToAddress("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
 					bnbethAddr := common.HexToAddress("0x14e613ac84a31f709eadbdf89c6cc390fdc9540a")
 					supethAddr := common.HexToAddress("0xa1e5dc01359c2920c096f0091fc7f0bf69812ca7")
@@ -111,6 +108,9 @@ func main() {
 						common.HexToAddress(goerliTokenAddr),
 					}
 					go t.Start()
+
+					s := &Subscriber{mainnetClient, goerliClient, t}
+					s.Start()
 
 					return Serve(ethC, rpcURL, port, ttlSeconds)
 				},

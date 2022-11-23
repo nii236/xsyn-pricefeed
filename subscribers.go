@@ -10,6 +10,7 @@ import (
 type Subscriber struct {
 	Mainnet *ethclient.Client
 	Goerli  *ethclient.Client
+	Tickers *Tickers
 }
 
 func (s *Subscriber) Start() {
@@ -36,6 +37,20 @@ func (s *Subscriber) Start() {
 					log.Err(err).Msg("set head")
 					continue
 				}
+
+				if s.Tickers.ScrapeMainnetSUPS {
+					err = s.Tickers.TickGoerliSUPS()
+					if err != nil {
+						log.Err(err).Msg("tick goerli SUPS")
+					}
+				}
+
+				if s.Tickers.ScrapeMainnetETH {
+					err = s.Tickers.TickGoerliETH()
+					if err != nil {
+						log.Err(err).Msg("tick goerli ETH")
+					}
+				}
 			}
 		}
 	}()
@@ -60,6 +75,19 @@ func (s *Subscriber) Start() {
 				if err != nil {
 					log.Err(err).Msg("set head")
 					continue
+				}
+				if s.Tickers.ScrapeGoerliSUPS {
+					err = s.Tickers.TickGoerliSUPS()
+					if err != nil {
+						log.Err(err).Msg("tick goerli SUPS")
+					}
+				}
+
+				if s.Tickers.ScrapeGoerliETH {
+					err = s.Tickers.TickGoerliETH()
+					if err != nil {
+						log.Err(err).Msg("tick goerli ETH")
+					}
 				}
 			}
 		}
