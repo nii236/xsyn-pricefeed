@@ -7,7 +7,9 @@ require (
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/cors v1.2.1
+	github.com/go-chi/docgen v1.2.0
 	github.com/gofrs/uuid v4.3.1+incompatible
+	github.com/gomarkdown/markdown v0.0.0-20221013030248-663e2500819c
 	github.com/jackc/pgx/v5 v5.1.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/rs/zerolog v1.28.0

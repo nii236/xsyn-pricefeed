@@ -10,6 +10,8 @@ import (
 	"xsyn-pricefeed/ethusd"
 	"xsyn-pricefeed/supseth"
 
+	"github.com/gomarkdown/markdown"
+
 	chiprometheus "xsyn-pricefeed/middleware"
 
 	_ "github.com/prometheus/client_golang/prometheus"
@@ -27,6 +29,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/docgen"
 	"github.com/shopspring/decimal"
 )
 
@@ -212,6 +215,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
+
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(LoggerMiddleware)
@@ -219,6 +223,12 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 	r.Use(chiprometheus.NewPatternMiddleware("xsyn-pricefeed"))
 
 	r.Handle("/metrics", promhttp.Handler())
+	r.Get("/", func(w http.ResponseWriter, req *http.Request) {
+		md := docgen.MarkdownRoutesDoc(r, docgen.MarkdownOpts{ProjectPath: "xsyn-pricefeed"})
+		output := markdown.ToHTML([]byte(md), nil, nil)
+
+		w.Write(output)
+	})
 	r.Get("/api/transfers/{chain}/{symbol}", http.HandlerFunc(c.Transfers))
 	r.Get("/api/check", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Get("/api/prices", cacheClient.Middleware(http.HandlerFunc(c.PricesHandler)).ServeHTTP)
@@ -226,6 +236,7 @@ func Serve(ethC *EthClient, rpcURL string, port int, ttlSeconds int) error {
 	r.Get("/api/bnb_price", cacheClient.Middleware(http.HandlerFunc(c.Bnb)).ServeHTTP)
 	r.Get("/api/sups_price", cacheClient.Middleware(http.HandlerFunc(c.Sups)).ServeHTTP)
 	log.Info().Int("port", port).Msg("Running server")
+
 	return http.ListenAndServe(":"+fmt.Sprintf("%d", port), r)
 }
 
