@@ -36,7 +36,6 @@ import (
 var log zerolog.Logger
 
 func main() {
-	log = zerolog.New(os.Stdout).With().Caller().Logger().Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	app := &cli.App{
 
@@ -45,6 +44,7 @@ func main() {
 				Name:  "serve",
 				Usage: "serve price feed API",
 				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "log_format", Value: "console", Usage: "log formatting (json or console)", EnvVars: []string{"LOG_FORMAT"}},
 					&cli.IntFlag{Name: "ttl_seconds", Value: 300, Usage: "seconds to cache the responses", EnvVars: []string{"TTL_SECONDS"}},
 					&cli.IntFlag{Name: "port", Value: 8080, Usage: "Server port to host on", EnvVars: []string{"PORT"}},
 					&cli.StringFlag{Name: "rpc_url", Required: true, Usage: "ETH node RPC URL", EnvVars: []string{"RPC_URL"}},
@@ -58,6 +58,7 @@ func main() {
 					&cli.BoolFlag{Name: "scrape_goerli_sups", Value: true, Usage: "Scrape goerli sups txes", EnvVars: []string{"SCRAPE_GOERLI_SUPS"}},
 				},
 				Action: func(c *cli.Context) error {
+					logFormat := c.String("log_format")
 					ttlSeconds := c.Int("ttl_seconds")
 					rpcURL := c.String("rpc_url")
 					goerliRpcUrl := c.String("goerli_rpc_url")
@@ -65,6 +66,10 @@ func main() {
 					dbURL := c.String("db_url")
 					tokenAddr := c.String("token_addr")
 					goerliTokenAddr := c.String("goerli_token_addr")
+					log = zerolog.New(os.Stdout).With().Caller().Logger()
+					if logFormat == "console" {
+						log = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+					}
 					err := Connect(dbURL)
 					if err != nil {
 						return fmt.Errorf("connect db: %w", err)
