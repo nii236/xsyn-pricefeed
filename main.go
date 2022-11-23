@@ -164,6 +164,7 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 		t1 := time.Now()
 		defer func() {
 			log.Info().
+				Str("ip", r.RemoteAddr).
 				Str("method", r.Method).
 				Str("path", r.URL.String()).
 				Int("status", ww.Status()).
