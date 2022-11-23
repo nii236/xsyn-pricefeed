@@ -230,7 +230,7 @@ func (t *Tickers) Start() {
 
 	for {
 		select {
-		case <-tickerMedium.C:
+		case <-tickerFast.C:
 			log.Info().Str("type", "medium").Msg("running ticker")
 			if t.ScrapeMainnetSUPS {
 				err = t.TickMainnetSUPS()
@@ -258,7 +258,6 @@ func (t *Tickers) Start() {
 					log.Err(err).Msg("tick goerli ETH")
 				}
 			}
-		case <-tickerFast.C:
 			log.Info().Str("type", "fast").Msg("running ticker")
 			err := t.TickBlockHeightMainnet()
 			if err != nil {
@@ -268,6 +267,7 @@ func (t *Tickers) Start() {
 			if err != nil {
 				log.Err(err).Msg("tick block height goerli")
 			}
+		case <-tickerMedium.C:
 		case <-tickerSlow.C:
 			log.Info().Str("type", "slow").Msg("running ticker")
 			err := t.TickPrice()
