@@ -1,0 +1,2 @@
+ATTEMPTS=6
+/api/check  simple_check

@@ -23,7 +23,7 @@ FROM gcr.io/distroless/base-debian11
 
 WORKDIR /
 COPY --from=build /app/dist/xsyn-pricefeed /xsyn-pricefeed
-
+COPY ./CHECKS /
 USER nonroot:nonroot
 
 ENTRYPOINT ["/xsyn-pricefeed", "serve"]

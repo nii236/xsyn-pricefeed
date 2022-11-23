@@ -68,11 +68,11 @@ func main() {
 					}
 					client, err := ethclient.Dial(rpcURL)
 					if err != nil {
-						return fmt.Errorf("dial eth node: %w", err)
+						return fmt.Errorf("dial eth node %s: %w", rpcURL, err)
 					}
 					goerliClient, err := ethclient.Dial(goerliRpcUrl)
 					if err != nil {
-						return fmt.Errorf("dial goerli eth node: %w", err)
+						return fmt.Errorf("dial goerli eth node %s: %w", rpcURL, err)
 					}
 					ethusdAddr := common.HexToAddress("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419")
 					bnbethAddr := common.HexToAddress("0x14e613ac84a31f709eadbdf89c6cc390fdc9540a")
