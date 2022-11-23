@@ -30,6 +30,7 @@ func (s *Subscriber) Start() {
 				log.Err(err).Msg("receive head")
 				continue
 			case head := <-mainnetHead:
+				log.Info().Int64("number", head.Number.Int64()).Msg("receive mainnet head")
 				err = SetInt(KeyBlockHeightMainnet, int(head.Number.Int64()))
 				if err != nil {
 					log.Err(err).Msg("set head")
@@ -54,6 +55,7 @@ func (s *Subscriber) Start() {
 				log.Err(err).Msg("receive head")
 				continue
 			case head := <-testnetHead:
+				log.Info().Int64("number", head.Number.Int64()).Msg("receive goerli head")
 				err = SetInt(KeyBlockHeightGoerli, int(head.Number.Int64()))
 				if err != nil {
 					log.Err(err).Msg("set head")
