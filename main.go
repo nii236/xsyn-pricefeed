@@ -377,6 +377,9 @@ func (c *Controller) PricesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result := &PriceResponse{time.Now().Unix(), supsusd, ethusd, bnbusd}
+	if result.SUPSUSD.IsZero() {
+		result.SUPSUSD = decimal.NewFromFloat(0.8)
+	}
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		log.Err(err).Msg("marshal json")
