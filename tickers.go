@@ -340,7 +340,11 @@ func (t *Tickers) TickEth(client *ethclient.Client, lastBlock int, blockHeight i
 		fromBlock = 0
 	}
 
-	log.Info().Int64("from_block", fromBlock).Int64("chain_id", chainID).Str("symbol", "eth").Msg("scraping transfers")
+	log.Info().
+		Int64("from_block", fromBlock).
+		Int64("chain_id", chainID).
+		Str("symbol", "eth").
+		Msg("scraping transfers")
 
 	whitelisted, err := WhitelistedAddresses(int(chainID))
 	if err != nil {

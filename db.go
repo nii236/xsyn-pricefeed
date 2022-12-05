@@ -110,6 +110,9 @@ func Get(key KVKey, defaultValue ...int) (string, error) {
 }
 
 func AddPrice(price *PriceResponse) error {
+	if price.SUPSUSD == decimal.Zero {
+		price.SUPSUSD = decimal.NewFromFloat(0.8)
+	}
 	q := `INSERT INTO prices (sups_price_cents, eth_price_cents, bnb_price_cents) VALUES ($1, $2, $3)`
 	_, err := conn.Exec(context.TODO(), q, price.SUPSUSD, price.ETHUSD, price.BNBUSD)
 	if err != nil {
